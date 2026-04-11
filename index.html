@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -144,6 +143,23 @@
         .btn-balance { background: linear-gradient(135deg, #028090, var(--neon-cyan)); box-shadow: 0 4px 15px rgba(5,217,232,0.3); color: #000; text-shadow: none;}
         .btn-reg { background: linear-gradient(135deg, #6a00f4, var(--neon-purple)); box-shadow: 0 4px 15px rgba(179,102,255,0.3); }
        
+        /* Icon Button (for editing card) */
+        .btn-icon {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            transition: transform 0.2s, opacity 0.2s;
+            opacity: 0.7;
+        }
+        .btn-icon:hover {
+            opacity: 1;
+            transform: scale(1.15);
+        }
+
+
         /* PWA Install Button */
         .btn-install {
             background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
@@ -309,6 +325,7 @@
     </div>
 
 
+    <!-- 操作金額 Modal -->
     <div class="modal-overlay" id="action-modal">
         <div class="modal">
             <h3 id="modal-title">輸入扣款</h3>
@@ -328,6 +345,7 @@
     </div>
 
 
+    <!-- 編輯交易記錄 Modal -->
     <div class="modal-overlay" id="edit-modal">
         <div class="modal">
             <h3>編輯記錄</h3>
@@ -352,6 +370,40 @@
     </div>
 
 
+    <!-- 編輯卡片資訊 Modal -->
+    <div class="modal-overlay" id="edit-card-modal">
+        <div class="modal">
+            <h3>編輯卡片資訊</h3>
+            <input type="hidden" id="edit-card-id">
+            <div class="form-group">
+                <label>卡片名稱</label>
+                <input type="text" id="edit-card-name" class="form-control" placeholder="例如：科技通勤卡">
+            </div>
+            <div class="form-group">
+                <label>卡片種類</label>
+                <select id="edit-card-type" class="form-control">
+                    <option value="悠遊卡">悠遊卡</option>
+                    <option value="一卡通">一卡通</option>
+                    <option value="愛金卡">愛金卡</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>信用卡號 (選填)</label>
+                <input type="text" id="edit-card-credit" class="form-control" placeholder="例如：12345678...">
+            </div>
+            <div class="form-group">
+                <label>票證卡號 (選填)</label>
+                <input type="text" id="edit-card-transit" class="form-control" placeholder="例如：0123456789">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-cancel" onclick="closeEditCardModal()">取消</button>
+                <button class="btn btn-block" style="margin-bottom:0;" onclick="submitEditCard()">儲存變更</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 編輯餘額 Modal -->
     <div class="modal-overlay" id="balance-modal">
         <div class="modal">
             <h3>校正實際餘額</h3>
@@ -448,7 +500,7 @@
         }
 
 
-        // --- 核心功能 ---
+        // --- 核心功能：卡片新增與修改 ---
         function addCard() {
             const name = document.getElementById('new-card-name').value.trim();
             const type = document.getElementById('new-card-type').value;
@@ -481,6 +533,53 @@
         }
 
 
+        function openEditCardModal(cardId) {
+            const card = appData.cards.find(c => c.id === cardId);
+            if (!card) return;
+           
+            document.getElementById('edit-card-id').value = card.id;
+            document.getElementById('edit-card-name').value = card.name;
+            document.getElementById('edit-card-type').value = card.type;
+            document.getElementById('edit-card-credit').value = card.creditNum || '';
+            document.getElementById('edit-card-transit').value = card.transitNum || '';
+           
+            document.getElementById('edit-card-modal').style.display = 'flex';
+        }
+
+
+        function closeEditCardModal() {
+            document.getElementById('edit-card-modal').style.display = 'none';
+        }
+
+
+        function submitEditCard() {
+            const cardId = document.getElementById('edit-card-id').value;
+            const card = appData.cards.find(c => c.id === cardId);
+            if (!card) return;
+
+
+            const name = document.getElementById('edit-card-name').value.trim();
+            const type = document.getElementById('edit-card-type').value;
+            const creditNum = document.getElementById('edit-card-credit').value.trim();
+            const transitNum = document.getElementById('edit-card-transit').value.trim();
+
+
+            if (!name) return alert('請輸入卡片名稱');
+
+
+            card.name = name;
+            card.type = type;
+            card.creditNum = creditNum;
+            card.transitNum = transitNum;
+
+
+            saveData();
+            closeEditCardModal();
+            triggerAutoBackup();
+        }
+
+
+        // --- 核心功能：交易操作 ---
         function openActionModal(cardId, type) {
             currentAction = { cardId, type };
             if (type === '登錄') {
@@ -632,7 +731,7 @@
         }
 
 
-        // --- 編輯功能 ---
+        // --- 編輯功能 (歷史紀錄) ---
         function openEditModal(txId) {
             const tx = appData.transactions.find(t => t.id === txId);
             if(!tx) return;
@@ -808,7 +907,10 @@
                 container.innerHTML += `
                     <div class="card-item">
                         <div class="card-header">
-                            <div class="card-title">${card.name}</div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <div class="card-title">${card.name}</div>
+                                <button class="btn-icon" onclick="openEditCardModal('${card.id}')" title="編輯卡片資訊">✏️</button>
+                            </div>
                             <div class="card-type ${typeClass}">${card.type}</div>
                         </div>
                         ${numbersHtml}
