@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>電子票證管家</title>
-    <!-- 引入自訂 ICON (改為支援 PNG) -->
+    <!-- 引入自訂 ICON -->
     <link rel="icon" href="icon.png" type="image/png">
     <link rel="shortcut icon" href="icon.png" type="image/png">
+    <!-- 引入 Chart.js 圖表套件 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Noto+Sans+TC:wght@400;700&display=swap');
-
 
         :root {
             /* Tech Theme Colors */
@@ -18,7 +19,7 @@
             --glass-border: rgba(0, 243, 255, 0.2);
             --text-main: #e2e8f0;
             --text-muted: #8b9bb4;
-           
+            
             /* Neon Accents */
             --neon-cyan: #05d9e8;
             --neon-pink: #ff2a6d;
@@ -27,138 +28,142 @@
             --neon-purple: #b366ff;
         }
 
-
         * { box-sizing: border-box; }
-       
-        body {
-            font-family: 'Noto Sans TC', -apple-system, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-color);
-            background-image:
+        
+        body { 
+            font-family: 'Noto Sans TC', -apple-system, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: var(--bg-color); 
+            background-image: 
                 radial-gradient(circle at 15% 50%, rgba(5, 217, 232, 0.05), transparent 25%),
                 radial-gradient(circle at 85% 30%, rgba(255, 42, 109, 0.05), transparent 25%);
             background-attachment: fixed;
-            color: var(--text-main);
-            padding-bottom: 80px;
+            color: var(--text-main); 
+            padding-bottom: 80px; 
         }
-       
+        
         /* Navbar & Tabs */
-        .header {
-            background: rgba(11, 15, 25, 0.8);
+        .header { 
+            background: rgba(11, 15, 25, 0.8); 
             backdrop-filter: blur(10px);
-            color: var(--neon-cyan);
-            padding: 15px 20px;
-            text-align: center;
-            font-size: 22px;
-            font-weight: bold;
+            color: var(--neon-cyan); 
+            padding: 15px 20px; 
+            text-align: center; 
+            font-size: 22px; 
+            font-weight: bold; 
             font-family: 'Orbitron', 'Noto Sans TC', sans-serif;
             letter-spacing: 2px;
-            position: sticky;
-            top: 0;
-            z-index: 10;
+            position: sticky; 
+            top: 0; 
+            z-index: 10; 
             border-bottom: 1px solid var(--glass-border);
             text-shadow: 0 0 10px rgba(5, 217, 232, 0.5);
         }
-       
+        
         .tab-content { display: none; padding: 15px; max-width: 600px; margin: 0 auto; animation: fadeIn 0.3s ease-in-out; }
         .active-tab { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-
-        .bottom-nav {
-            display: flex; justify-content: space-around;
-            background: rgba(11, 15, 25, 0.85);
+        .bottom-nav { 
+            display: flex; justify-content: space-around; 
+            background: rgba(11, 15, 25, 0.85); 
             backdrop-filter: blur(15px);
-            position: fixed; bottom: 0; width: 100%;
-            border-top: 1px solid var(--glass-border);
-            padding: 12px 0; z-index: 10;
+            position: fixed; bottom: 0; width: 100%; 
+            border-top: 1px solid var(--glass-border); 
+            padding: 12px 0; z-index: 10; 
         }
-        .nav-btn {
-            background: none; border: none; font-size: 14px;
-            color: var(--text-muted); cursor: pointer;
-            display: flex; flex-direction: column; align-items: center; width: 33%;
+        .nav-btn { 
+            background: none; border: none; font-size: 14px; 
+            color: var(--text-muted); cursor: pointer; 
+            display: flex; flex-direction: column; align-items: center; width: 33%; 
             transition: all 0.3s;
         }
         .nav-icon { font-size: 22px; margin-bottom: 4px; transition: all 0.3s;}
         .nav-btn.active { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(5, 217, 232, 0.5); }
         .nav-btn.active .nav-icon { transform: translateY(-3px) scale(1.1); }
-       
-        /* Cards (Glassmorphism) */
-        .card-item {
-            background: var(--glass-bg);
+        
+        /* 緊湊型 Cards (Glassmorphism) */
+        .card-item { 
+            background: var(--glass-bg); 
             backdrop-filter: blur(10px);
             border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            border-radius: 12px; 
+            padding: 12px 15px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.3); 
             position: relative;
             overflow: hidden;
         }
         .card-item::before {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
-            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+            content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%;
+            background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple));
         }
-       
-        .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 15px; }
-        .card-title { font-size: 20px; font-weight: bold; letter-spacing: 1px;}
-        .card-type { font-size: 12px; padding: 5px 10px; border-radius: 20px; color: #fff; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5);}
-        .type-easy { background: linear-gradient(135deg, #0088A8, var(--neon-cyan)); box-shadow: 0 0 10px rgba(5,217,232,0.4);}
-        .type-ipass { background: linear-gradient(135deg, #F39800, var(--neon-orange)); box-shadow: 0 0 10px rgba(255,179,15,0.4);}
-        .type-icash { background: linear-gradient(135deg, #E60012, var(--neon-pink)); box-shadow: 0 0 10px rgba(255,42,109,0.4);}
-       
-        /* Card Numbers Info */
+        
+        .card-top-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 8px; }
+        .card-title { font-size: 16px; font-weight: bold; letter-spacing: 1px;}
+        .card-type { font-size: 11px; padding: 3px 8px; border-radius: 12px; color: #fff; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5);}
+        .type-easy { background: linear-gradient(135deg, #0088A8, var(--neon-cyan)); } 
+        .type-ipass { background: linear-gradient(135deg, #F39800, var(--neon-orange)); } 
+        .type-icash { background: linear-gradient(135deg, #E60012, var(--neon-pink)); } 
+        
+        /* 緊湊型 Numbers Info */
         .card-numbers {
-            font-size: 13px;
+            font-size: 11px;
             color: var(--text-muted);
             background: rgba(0,0,0,0.25);
-            padding: 10px 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            letter-spacing: 1px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
             font-family: 'Orbitron', 'Noto Sans TC', sans-serif;
-            border-left: 2px solid var(--neon-cyan);
+            display: flex;
+            justify-content: space-between;
+            gap: 5px;
         }
-        .card-numbers div { margin-bottom: 5px; display: flex; justify-content: space-between;}
-        .card-numbers div:last-child { margin-bottom: 0; }
         .card-numbers span { color: var(--text-main); font-weight: bold; }
-       
-        .card-balance { font-family: 'Orbitron', sans-serif; font-size: 36px; font-weight: bold; text-align: center; margin: 20px 0; color: #fff; text-shadow: 0 0 15px rgba(255,255,255,0.3);}
-        .card-balance-label { text-align: center; font-size: 12px; color: var(--neon-cyan); letter-spacing: 2px; margin-bottom: -15px; margin-top: 5px;}
-       
-        .card-info { font-size: 13px; color: var(--text-main); text-align: center; margin-bottom: 20px; min-height: 18px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;}
-       
-        /* Buttons */
-        .card-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-        .btn {
-            padding: 12px 15px; border: none; border-radius: 10px; font-size: 15px; font-weight: bold;
-            cursor: pointer; flex: 1; color: white; min-width: 80px;
+        
+        .card-balance-compact { font-family: 'Orbitron', sans-serif; font-size: 24px; font-weight: bold; text-align: right; color: #fff; text-shadow: 0 0 10px rgba(5,217,232,0.5);}
+        
+        .card-info { font-size: 12px; color: var(--text-main); text-align: center; margin-bottom: 10px; min-height: 16px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 6px; display:flex; justify-content: space-around; align-items:center;}
+        
+        /* 緊湊型按鈕 Actions */
+        .card-actions-compact { display: flex; gap: 6px; justify-content: space-between; }
+        .btn-sm { 
+            padding: 8px 4px; border: none; border-radius: 8px; font-size: 13px; font-weight: bold;
+            cursor: pointer; flex: 1; color: white; min-width: 0;
             transition: all 0.2s; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-            position: relative; overflow: hidden;
+            text-align: center;
         }
-        .btn:active { transform: scale(0.95); }
-       
-        .btn-deduct { background: linear-gradient(135deg, #d80032, var(--neon-pink)); box-shadow: 0 4px 15px rgba(255,42,109,0.3); }
-        .btn-balance { background: linear-gradient(135deg, #028090, var(--neon-cyan)); box-shadow: 0 4px 15px rgba(5,217,232,0.3); color: #000; text-shadow: none;}
-        .btn-reg { background: linear-gradient(135deg, #6a00f4, var(--neon-purple)); box-shadow: 0 4px 15px rgba(179,102,255,0.3); }
-       
-        /* Icon Button (for editing card) */
-        .btn-icon {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 16px;
-            padding: 4px;
-            transition: transform 0.2s, opacity 0.2s;
-            opacity: 0.7;
+        .btn-sm:active { transform: scale(0.95); }
+        
+        .btn-sm-deduct { background: linear-gradient(135deg, #d80032, var(--neon-pink)); box-shadow: 0 2px 8px rgba(255,42,109,0.3); }
+        .btn-sm-calib { background: linear-gradient(135deg, #d35400, var(--neon-orange)); box-shadow: 0 2px 8px rgba(255,179,15,0.3); }
+        .btn-sm-reg { background: linear-gradient(135deg, #6a00f4, var(--neon-purple)); box-shadow: 0 2px 8px rgba(179,102,255,0.3); }
+        .btn-sm-edit { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); }
+        .btn-sm-hist { background: linear-gradient(135deg, #028090, var(--neon-cyan)); color:#000; text-shadow:none;}
+        
+        /* Overview Chart Area */
+        .overview-card {
+            background: var(--glass-bg); 
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.3); 
         }
-        .btn-icon:hover {
-            opacity: 1;
-            transform: scale(1.15);
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 10px;
         }
-
+        .toolbar select {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
 
         /* PWA Install Button */
         .btn-install {
@@ -168,94 +173,88 @@
             box-shadow: 0 4px 15px rgba(5,217,232,0.5);
             text-shadow: none;
             border: 1px solid var(--neon-cyan);
+            width: 100%; padding: 12px; border-radius: 8px; margin-bottom: 15px; cursor: pointer;
         }
-        .btn-install:active { box-shadow: 0 0 10px rgba(5,217,232,0.8); }
-       
-        /* Independent History Link */
-        .card-history-link {
-            text-align: center; margin-top: 20px; padding-top: 15px; font-size: 14px;
-            color: var(--neon-cyan); cursor: pointer; border-top: 1px dashed rgba(255,255,255,0.1);
-            display: block; letter-spacing: 1px; transition: color 0.3s;
+
+        /* Forms, Settings & Modals (Keep as original tech style) */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--neon-cyan); letter-spacing: 1px;}
+        .form-control { 
+            width: 100%; padding: 10px; 
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 8px; font-size: 15px; color: #fff; transition: all 0.3s;
         }
-        .card-history-link:hover { color: #fff; text-shadow: 0 0 8px var(--neon-cyan); }
-       
+        .form-control:focus { outline: none; border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(5,217,232,0.3); background: rgba(0,0,0,0.5);}
+        select.form-control { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2305d9e8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 10px center; background-size: 1em; }
+        select.form-control option { background: var(--bg-color); color: #fff; }
+        
+        .btn-block { width: 100%; padding: 14px; font-size: 16px; margin-bottom: 10px; background: linear-gradient(135deg, #00b4d8, var(--neon-cyan)); color: #000; font-weight: bold; box-shadow: 0 4px 15px rgba(5,217,232,0.3); border:none; border-radius:8px; cursor:pointer;}
+        .btn-action-alt { background: linear-gradient(135deg, #7b2cbf, var(--neon-purple)); color: #fff; box-shadow: 0 4px 15px rgba(179,102,255,0.3);}
+        
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20; justify-content: center; align-items: center; }
+        .modal { background: #161b29; border: 1px solid var(--neon-cyan); padding: 25px; border-radius: 16px; width: 90%; max-width: 380px; max-height: 90vh; overflow-y: auto; box-shadow: 0 0 30px rgba(5,217,232,0.2); }
+        .modal h3 { margin-top: 0; color: var(--neon-cyan); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 20px;}
+        .modal-buttons { display: flex; gap: 15px; margin-top: 25px; }
+        .btn-cancel { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; box-shadow: none; flex:1; padding:12px; border-radius:8px; cursor:pointer;}
+
         /* History Items (Color Coded) */
-        .history-item {
-            background: var(--glass-bg); padding: 15px; border-radius: 12px; margin-bottom: 12px;
-            display: flex; justify-content: space-between; align-items: flex-start;
-            border: 1px solid rgba(255,255,255,0.05); position: relative;
-        }
+        .history-item { background: var(--glass-bg); padding: 15px; border-radius: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; border: 1px solid rgba(255,255,255,0.05); position: relative; }
         .history-left { display: flex; flex-direction: column; flex: 1; }
         .history-time { font-size: 12px; color: var(--text-muted); font-family: 'Orbitron', sans-serif;}
         .history-desc { font-size: 16px; font-weight: bold; margin-top: 6px; line-height: 1.4; color: #fff;}
         .history-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
         .history-amount { font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: bold; letter-spacing: 1px;}
-       
-        /* Dynamic History Colors */
         .hist-deduct { border-left: 4px solid var(--neon-pink); background: linear-gradient(90deg, rgba(255,42,109,0.1) 0%, var(--glass-bg) 50%); }
         .hist-topup { border-left: 4px solid var(--neon-cyan); background: linear-gradient(90deg, rgba(5,217,232,0.1) 0%, var(--glass-bg) 50%); }
         .hist-calib { border-left: 4px solid var(--neon-orange); background: linear-gradient(90deg, rgba(255,179,15,0.1) 0%, var(--glass-bg) 50%); }
         .hist-reg { border-left: 4px solid var(--neon-purple); background: linear-gradient(90deg, rgba(179,102,255,0.1) 0%, var(--glass-bg) 50%); }
-       
         .amt-deduct { color: var(--neon-pink); text-shadow: 0 0 8px rgba(255,42,109,0.4);}
         .amt-topup { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(5,217,232,0.4);}
         .amt-calib { color: var(--neon-orange); text-shadow: 0 0 8px rgba(255,179,15,0.4);}
         .amt-reg { color: var(--neon-purple); text-shadow: 0 0 8px rgba(179,102,255,0.4);}
-       
         .btn-edit-hist { margin-top: 10px; padding: 5px 12px; font-size: 12px; cursor: pointer; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff; transition: all 0.2s;}
-        .btn-edit-hist:hover { background: rgba(255,255,255,0.2); }
 
-
-        /* Forms & Inputs */
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--neon-cyan); letter-spacing: 1px;}
-        .form-control {
-            width: 100%; padding: 12px;
-            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px; font-size: 16px; color: #fff; transition: all 0.3s;
-        }
-        .form-control:focus { outline: none; border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(5,217,232,0.3); background: rgba(0,0,0,0.5);}
-        select.form-control { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2305d9e8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 10px center; background-size: 1em; }
-        select.form-control option { background: var(--bg-color); color: #fff; }
-       
-        .btn-block { width: 100%; padding: 14px; font-size: 16px; margin-bottom: 10px; background: linear-gradient(135deg, #00b4d8, var(--neon-cyan)); color: #000; font-weight: bold; box-shadow: 0 4px 15px rgba(5,217,232,0.3); }
-        .btn-action-alt { background: linear-gradient(135deg, #7b2cbf, var(--neon-purple)); color: #fff; box-shadow: 0 4px 15px rgba(179,102,255,0.3);}
-       
-        /* Modal */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20; justify-content: center; align-items: center; }
-        .modal { background: #161b29; border: 1px solid var(--neon-cyan); padding: 25px; border-radius: 16px; width: 90%; max-width: 380px; max-height: 90vh; overflow-y: auto; box-shadow: 0 0 30px rgba(5,217,232,0.2); }
-        .modal h3 { margin-top: 0; color: var(--neon-cyan); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 20px;}
-        .modal-buttons { display: flex; gap: 15px; margin-top: 25px; }
-        .btn-cancel { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; box-shadow: none;}
-       
-        /* Backup Notice */
-        .backup-notice {
-            background: linear-gradient(90deg, rgba(1,255,195,0.1), rgba(1,255,195,0.02));
-            color: var(--neon-green);
-            padding: 10px;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 13px;
-            margin-bottom: 15px;
-            border: 1px solid rgba(1,255,195,0.3);
-            display: none;
-            box-shadow: 0 0 10px rgba(1,255,195,0.1);
-        }
+        .backup-notice { background: linear-gradient(90deg, rgba(1,255,195,0.1), rgba(1,255,195,0.02)); color: var(--neon-green); padding: 10px; border-radius: 8px; text-align: center; font-size: 13px; margin-bottom: 15px; border: 1px solid rgba(1,255,195,0.3); display: none; box-shadow: 0 0 10px rgba(1,255,195,0.1); }
     </style>
 </head>
 <body>
 
-
     <div class="header">電子票證管家</div>
 
-
+    <!-- 首頁：卡片清單與總覽 -->
     <div id="tab-cards" class="tab-content active-tab">
-        <button id="install-app-btn" class="btn btn-block btn-install" style="display: none; margin-bottom: 20px;">📲 安裝為 APP</button>
+        <button id="install-app-btn" class="btn-install" style="display: none;">📲 安裝為 APP</button>
         <div id="last-backup-info" class="backup-notice"></div>
+        
+        <!-- 統計圖表區塊 -->
+        <div class="overview-card" id="overview-container" style="display:none;">
+            <div style="text-align:center; font-size:14px; font-weight:bold; color:var(--text-main); letter-spacing:2px; margin-bottom:10px;">總資產分佈</div>
+            <div style="position:relative; height: 180px;">
+                <canvas id="overviewChart"></canvas>
+                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center; pointer-events:none;">
+                    <div style="font-size:11px; color:var(--text-muted); letter-spacing:1px;">TOTAL</div>
+                    <div style="font-family:'Orbitron', sans-serif; font-size:20px; font-weight:bold; color:var(--neon-cyan); text-shadow:0 0 8px rgba(5,217,232,0.5);" id="total-balance-text">$0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 排序工具列 -->
+        <div class="toolbar" id="sort-toolbar" style="display:none;">
+            <div style="font-size:13px; color:var(--text-muted); white-space:nowrap;">排序方式：</div>
+            <select id="card-sort-select" class="form-control" onchange="renderCards()">
+                <option value="default">預設 (新增順序)</option>
+                <option value="balance-desc">餘額 (高 ➔ 低)</option>
+                <option value="balance-asc">餘額 (低 ➔ 高)</option>
+                <option value="type">卡片種類</option>
+                <option value="topup-desc">總儲值次數 (多 ➔ 少)</option>
+                <option value="reg-desc">本年登錄次數 (多 ➔ 少)</option>
+            </select>
+        </div>
+
         <div id="cards-container"></div>
     </div>
 
-
+    <!-- 歷史記錄 -->
     <div id="tab-history" class="tab-content">
         <h3 style="margin-top:0; color:var(--neon-cyan); letter-spacing:1px;">📜 歷史記錄</h3>
         <div class="form-group">
@@ -266,9 +265,9 @@
         <div id="history-container"></div>
     </div>
 
-
+    <!-- 設定與管理 -->
     <div id="tab-settings" class="tab-content">
-        <div class="card-item">
+        <div class="card-item" style="padding:20px;">
             <h3 style="margin-top:0; color:var(--neon-cyan);">新增卡片</h3>
             <div class="form-group">
                 <label>卡片名稱</label>
@@ -294,20 +293,18 @@
                 <label>初始餘額</label>
                 <input type="number" id="new-card-balance" class="form-control" placeholder="0">
             </div>
-            <button class="btn btn-block" onclick="addCard()">新增資料</button>
+            <button class="btn-block" onclick="addCard()">新增資料</button>
         </div>
 
-
-        <div class="card-item" style="margin-top: 20px;">
+        <div class="card-item" style="margin-top: 20px; padding:20px;">
             <h3 style="margin-top:0; color:var(--neon-purple);">系統與備份</h3>
-            <button class="btn btn-block btn-action-alt" onclick="exportBackup(false)">手動匯出備份檔</button>
+            <button class="btn-block btn-action-alt" onclick="exportBackup(false)">手動匯出備份檔</button>
             <div class="form-group" style="margin-top: 20px;">
                 <label style="color:var(--neon-purple);">匯入備份檔 (將覆蓋現有資料)</label>
                 <input type="file" id="import-file" class="form-control" accept=".json" onchange="importBackup(event)" style="font-size:14px; padding:8px;">
             </div>
         </div>
     </div>
-
 
     <div class="bottom-nav">
         <button class="nav-btn active" onclick="switchTab('cards', this)">
@@ -324,7 +321,6 @@
         </button>
     </div>
 
-
     <!-- 操作金額 Modal -->
     <div class="modal-overlay" id="action-modal">
         <div class="modal">
@@ -338,12 +334,11 @@
                 <input type="text" id="modal-memo" class="form-control" placeholder="例如：超商買咖啡">
             </div>
             <div class="modal-buttons">
-                <button class="btn btn-cancel" onclick="closeModal()">取消</button>
-                <button class="btn btn-block" style="margin-bottom:0;" onclick="submitAction()">確認執行</button>
+                <button class="btn-cancel" onclick="closeModal()">取消</button>
+                <button class="btn-block" style="margin-bottom:0; flex:1;" onclick="submitAction()">確認執行</button>
             </div>
         </div>
     </div>
-
 
     <!-- 編輯交易記錄 Modal -->
     <div class="modal-overlay" id="edit-modal">
@@ -363,12 +358,11 @@
                 <input type="text" id="edit-memo" class="form-control" placeholder="可選填">
             </div>
             <div class="modal-buttons">
-                <button class="btn btn-cancel" onclick="closeEditModal()">取消</button>
-                <button class="btn btn-block" style="margin-bottom:0;" onclick="submitEdit()">儲存變更</button>
+                <button class="btn-cancel" onclick="closeEditModal()">取消</button>
+                <button class="btn-block" style="margin-bottom:0; flex:1;" onclick="submitEdit()">儲存變更</button>
             </div>
         </div>
     </div>
-
 
     <!-- 編輯卡片資訊 Modal -->
     <div class="modal-overlay" id="edit-card-modal">
@@ -400,12 +394,11 @@
                 <input type="number" id="edit-card-regcount" class="form-control" placeholder="修改登錄次數 (例如：5)" min="0">
             </div>
             <div class="modal-buttons">
-                <button class="btn btn-cancel" onclick="closeEditCardModal()">取消</button>
-                <button class="btn btn-block" style="margin-bottom:0;" onclick="submitEditCard()">儲存變更</button>
+                <button class="btn-cancel" onclick="closeEditCardModal()">取消</button>
+                <button class="btn-block" style="margin-bottom:0; flex:1;" onclick="submitEditCard()">儲存變更</button>
             </div>
         </div>
     </div>
-
 
     <!-- 編輯餘額 Modal -->
     <div class="modal-overlay" id="balance-modal">
@@ -417,22 +410,21 @@
             </div>
             <p style="font-size:12px; color:var(--text-muted); line-height:1.5;">系統將自動計算差額，並新增一筆「校正」紀錄以平衡帳目，維持歷史資料完整性。</p>
             <div class="modal-buttons">
-                <button class="btn btn-cancel" onclick="closeBalanceModal()">取消</button>
-                <button class="btn btn-block" style="margin-bottom:0;" onclick="submitBalanceEdit()">確認校正</button>
+                <button class="btn-cancel" onclick="closeBalanceModal()">取消</button>
+                <button class="btn-block" style="margin-bottom:0; flex:1;" onclick="submitBalanceEdit()">確認校正</button>
             </div>
         </div>
     </div>
-
 
     <script>
         // --- 資料初始化與 PWA 設定 ---
         const DB_KEY = 'TransitApp_Data';
         let appData = { cards: [], transactions: [], unsavedCount: 0 };
         let deferredPrompt; // 儲存 PWA 安裝事件
-       
+        let overviewChart = null; // 儲存 Chart.js 實例
+        
         // Modal 狀態變數
         let currentAction = { cardId: null, type: null };
-
 
         function init() {
             setupPWA();
@@ -440,51 +432,34 @@
             updateHistorySelect();
             renderCards();
             renderHistory();
-           
+            
             // PWA 安裝邏輯
             const installBtn = document.getElementById('install-app-btn');
 
-
             window.addEventListener('beforeinstallprompt', (e) => {
-                // 防止 Chrome 76+ 自動顯示安裝對話框
                 e.preventDefault();
-                // 儲存事件，供稍後點擊按鈕時使用
                 deferredPrompt = e;
-                // 顯示安裝按鈕
                 installBtn.style.display = 'block';
-                console.log('beforeinstallprompt 事件已觸發');
             });
-
 
             installBtn.addEventListener('click', async () => {
                 if (!deferredPrompt) return;
-                // 顯示安裝提示
                 deferredPrompt.prompt();
-                // 等待使用者回應
                 const { outcome } = await deferredPrompt.userChoice;
-                console.log(`使用者安裝選擇: ${outcome}`);
-                // 清除 deferredPrompt，因為它只能使用一次
                 deferredPrompt = null;
-                // 隱藏安裝按鈕
                 installBtn.style.display = 'none';
             });
-
 
             window.addEventListener('appinstalled', (e) => {
-                // 清除事件，因為應用程式已安裝
                 deferredPrompt = null;
-                // 確保隱藏安裝按鈕
                 installBtn.style.display = 'none';
-                console.log('PWA 已成功安裝');
             });
         }
-
 
         function loadData() {
             const data = localStorage.getItem(DB_KEY);
             if (data) appData = JSON.parse(data);
         }
-
 
         function saveData() {
             localStorage.setItem(DB_KEY, JSON.stringify(appData));
@@ -493,16 +468,25 @@
             renderHistory();
         }
 
-
         // --- 輔助功能 ---
         function formatCardNumber(numStr) {
-            if (!numStr) return '未提供';
-            // 先清除所有非字母數字的字符(如已有的減號或空格)
+            if (!numStr) return '無';
             const cleaned = String(numStr).replace(/[\s-]/g, '');
-            // 每 4 位數插入一個減號，但避免在最後一位後方加上減號
             return cleaned.replace(/(.{4})(?!$)/g, '$1-');
         }
 
+        function getTopupCount(cardId) {
+            return appData.transactions.filter(t => t.cardId === cardId && t.type === '儲值').length;
+        }
+
+        function getYearlyRegCount(cardId) {
+            const currentYear = new Date().getFullYear();
+            return appData.transactions.filter(t => 
+                t.cardId === cardId && 
+                t.type === '登錄' && 
+                new Date(t.timestamp).getFullYear() === currentYear
+            ).length;
+        }
 
         // --- 核心功能：卡片新增與修改 ---
         function addCard() {
@@ -512,59 +496,51 @@
             const transitNum = document.getElementById('new-card-transit').value.trim();
             const balance = parseInt(document.getElementById('new-card-balance').value) || 0;
 
-
             if (!name) return alert('請輸入卡片名稱');
 
-
-            appData.cards.push({
-                id: Date.now().toString(),
-                type,
-                name,
+            appData.cards.push({ 
+                id: Date.now().toString(), 
+                type, 
+                name, 
                 balance,
                 creditNum,
-                transitNum
+                transitNum 
             });
             saveData();
-           
+            
             document.getElementById('new-card-name').value = '';
             document.getElementById('new-card-credit').value = '';
             document.getElementById('new-card-transit').value = '';
             document.getElementById('new-card-balance').value = '';
-           
-            // 視覺特效回饋
+            
             switchTab('cards', document.querySelectorAll('.nav-btn')[0]);
             triggerAutoBackup();
         }
 
-
         function openEditCardModal(cardId) {
             const card = appData.cards.find(c => c.id === cardId);
             if (!card) return;
-           
+            
             document.getElementById('edit-card-id').value = card.id;
             document.getElementById('edit-card-name').value = card.name;
             document.getElementById('edit-card-type').value = card.type;
             document.getElementById('edit-card-credit').value = card.creditNum || '';
             document.getElementById('edit-card-transit').value = card.transitNum || '';
-           
-            // 載入當前登錄次數
+            
             const currentRegCount = getYearlyRegCount(cardId);
             document.getElementById('edit-card-regcount').value = currentRegCount;
-           
+            
             document.getElementById('edit-card-modal').style.display = 'flex';
         }
-
 
         function closeEditCardModal() {
             document.getElementById('edit-card-modal').style.display = 'none';
         }
 
-
         function submitEditCard() {
             const cardId = document.getElementById('edit-card-id').value;
             const card = appData.cards.find(c => c.id === cardId);
             if (!card) return;
-
 
             const name = document.getElementById('edit-card-name').value.trim();
             const type = document.getElementById('edit-card-type').value;
@@ -572,25 +548,19 @@
             const transitNum = document.getElementById('edit-card-transit').value.trim();
             const regCountStr = document.getElementById('edit-card-regcount').value;
 
-
             if (!name) return alert('請輸入卡片名稱');
-
 
             card.name = name;
             card.type = type;
             card.creditNum = creditNum;
             card.transitNum = transitNum;
 
-
-            // 處理登錄次數修改 (限悠遊卡)
             const targetRegCount = parseInt(regCountStr);
             if (!isNaN(targetRegCount) && targetRegCount >= 0) {
                 const currentRegCount = getYearlyRegCount(cardId);
                 const diff = targetRegCount - currentRegCount;
 
-
                 if (diff > 0) {
-                    // 補足缺少的次數
                     for (let i = 0; i < diff; i++) {
                         appData.transactions.push({
                             id: Date.now().toString() + "_reg_edit_" + i,
@@ -602,7 +572,6 @@
                         });
                     }
                 } else if (diff < 0) {
-                    // 移除多餘的次數 (從最新的一筆開始刪除)
                     let removed = 0;
                     const currentYear = new Date().getFullYear();
                     for (let i = appData.transactions.length - 1; i >= 0 && removed < Math.abs(diff); i--) {
@@ -615,12 +584,10 @@
                 }
             }
 
-
             saveData();
             closeEditCardModal();
             triggerAutoBackup();
         }
-
 
         // --- 核心功能：交易操作 ---
         function openActionModal(cardId, type) {
@@ -628,20 +595,17 @@
             if (type === '登錄') {
                 const currentMonth = new Date().getMonth();
                 const currentYear = new Date().getFullYear();
-               
-                // 檢查該卡片本月是否已登錄
-                const hasRegThisMonth = appData.transactions.some(t =>
-                    t.cardId === cardId &&
-                    t.type === '登錄' &&
+                
+                const hasRegThisMonth = appData.transactions.some(t => 
+                    t.cardId === cardId && 
+                    t.type === '登錄' && 
                     new Date(t.timestamp).getFullYear() === currentYear &&
                     new Date(t.timestamp).getMonth() === currentMonth
                 );
 
-
                 if (hasRegThisMonth) {
                     return alert('⛔ 本月已登錄過，活動規定每月僅限登錄一次！');
                 }
-
 
                 if(confirm('確認要在今日新增一筆「回饋10%活動」的登錄記錄嗎？')) {
                     executeAction(cardId, type, 0, '');
@@ -651,46 +615,37 @@
                 document.getElementById('modal-amount').value = '';
                 document.getElementById('modal-memo').value = '';
                 document.getElementById('action-modal').style.display = 'flex';
-                // 延遲 focus 避免手機鍵盤問題
                 setTimeout(()=>document.getElementById('modal-amount').focus(), 100);
             }
         }
-
 
         function closeModal() {
             document.getElementById('action-modal').style.display = 'none';
         }
 
-
         function submitAction() {
             const amount = parseInt(document.getElementById('modal-amount').value);
             const memo = document.getElementById('modal-memo').value.trim();
-           
+            
             if (!amount || amount <= 0) return alert('請輸入有效金額');
-           
+            
             executeAction(currentAction.cardId, currentAction.type, amount, memo);
             closeModal();
         }
-
 
         function executeAction(cardId, type, amount, memo) {
             const card = appData.cards.find(c => c.id === cardId);
             if (!card) return;
 
-
             let timestamp = new Date().toISOString();
 
-
             if (type === '扣款') {
-                // 自動儲值邏輯：若餘額不足以扣款，自動儲值 500 的倍數
                 if (card.balance - amount < 0) {
                     let needed = amount - card.balance;
                     let topups = Math.ceil(needed / 500);
                     let topupAmt = topups * 500;
                     card.balance += topupAmt;
 
-
-                    // 將自動儲值的時間提早 1 毫秒，使其排序在扣款之前
                     let topupTime = new Date(new Date().getTime() - 1).toISOString();
                     appData.transactions.push({
                         id: Date.now().toString() + "_topup",
@@ -704,8 +659,6 @@
                 card.balance -= amount;
             }
 
-
-            // 寫入主交易記錄
             appData.transactions.push({
                 id: Date.now().toString(),
                 cardId: cardId,
@@ -715,23 +668,10 @@
                 memo: memo
             });
 
-
             saveData();
             triggerAutoBackup();
         }
 
-
-        function getYearlyRegCount(cardId) {
-            const currentYear = new Date().getFullYear();
-            return appData.transactions.filter(t =>
-                t.cardId === cardId &&
-                t.type === '登錄' &&
-                new Date(t.timestamp).getFullYear() === currentYear
-            ).length;
-        }
-
-
-        // --- 直接編輯餘額功能 ---
         function openBalanceModal(cardId) {
             currentAction = { cardId: cardId, type: 'balance' };
             const card = appData.cards.find(c => c.id === cardId);
@@ -741,20 +681,16 @@
             setTimeout(()=>document.getElementById('edit-balance-amount').focus(), 100);
         }
 
-
         function closeBalanceModal() {
             document.getElementById('balance-modal').style.display = 'none';
         }
-
 
         function submitBalanceEdit() {
             const newBalance = parseInt(document.getElementById('edit-balance-amount').value);
             if (isNaN(newBalance) || newBalance < 0) return alert('請輸入有效的餘額數字 (不可為負數)');
 
-
             const card = appData.cards.find(c => c.id === currentAction.cardId);
             if (!card) return;
-
 
             const diff = newBalance - card.balance;
             if (diff !== 0) {
@@ -773,66 +709,52 @@
             closeBalanceModal();
         }
 
-
         // --- 編輯功能 (歷史紀錄) ---
         function openEditModal(txId) {
             const tx = appData.transactions.find(t => t.id === txId);
             if(!tx) return;
-           
+            
             document.getElementById('edit-tx-id').value = tx.id;
-
-
-            // 格式化 datetime-local 支援的格式 (YYYY-MM-DDTHH:mm)
             const d = new Date(tx.timestamp);
             const pad = (n) => n.toString().padStart(2, '0');
             const dtStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-
             document.getElementById('edit-datetime').value = dtStr;
             document.getElementById('edit-amount').value = tx.amount || 0;
-            document.getElementById('edit-amount').disabled = (tx.type === '登錄' || tx.type === '校正'); // 登錄與校正無法改金額
+            document.getElementById('edit-amount').disabled = (tx.type === '登錄' || tx.type === '校正'); 
             document.getElementById('edit-memo').value = tx.memo || '';
-
 
             document.getElementById('edit-modal').style.display = 'flex';
         }
 
-
         function closeEditModal() {
             document.getElementById('edit-modal').style.display = 'none';
         }
-
 
         function submitEdit() {
             const txId = document.getElementById('edit-tx-id').value;
             const tx = appData.transactions.find(t => t.id === txId);
             const card = appData.cards.find(c => c.id === tx.cardId);
 
-
             const dtInput = document.getElementById('edit-datetime').value;
             if(!dtInput) return alert('請輸入完整的日期時間');
             const newTimestamp = new Date(dtInput).toISOString();
-           
+            
             const newAmount = parseInt(document.getElementById('edit-amount').value) || 0;
             const newMemo = document.getElementById('edit-memo').value.trim();
 
-
             if (tx.type !== '登錄' && tx.type !== '校正' && newAmount < 0) return alert('金額不可為負數');
 
-
-            // 回溯原記錄影響的餘額
             if (tx.type === '扣款') card.balance += tx.amount;
             else if (tx.type === '儲值') card.balance -= tx.amount;
 
-
-            // 套用新記錄的餘額計算與自動儲值判斷
             if (tx.type === '扣款') {
                 if (card.balance - newAmount < 0) {
                     let needed = newAmount - card.balance;
                     let topups = Math.ceil(needed / 500);
                     let topupAmt = topups * 500;
                     card.balance += topupAmt;
-                   
+                    
                     appData.transactions.push({
                         id: Date.now().toString() + "_topup_edit",
                         cardId: card.id,
@@ -849,16 +771,64 @@
                 tx.amount = newAmount;
             }
 
-
             tx.timestamp = newTimestamp;
             tx.memo = newMemo;
-
 
             saveData();
             closeEditModal();
             triggerAutoBackup();
         }
 
+        // --- Chart 繪製 ---
+        function renderOverviewChart(cardsData) {
+            const ctx = document.getElementById('overviewChart');
+            if (!ctx || typeof Chart === 'undefined') return;
+
+            if (overviewChart) {
+                overviewChart.destroy();
+            }
+
+            const totalBalance = cardsData.reduce((sum, card) => sum + card.balance, 0);
+            document.getElementById('total-balance-text').innerText = `$${totalBalance.toLocaleString()}`;
+
+            const labels = cardsData.map(c => c.name);
+            const data = cardsData.map(c => c.balance);
+            const bgColors = ['#05d9e8', '#ff2a6d', '#01ffc3', '#ffb30f', '#b366ff', '#f39c12', '#3498db'];
+
+            overviewChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: bgColors,
+                        borderWidth: 2,
+                        borderColor: '#0b0f19'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: {
+                        legend: { 
+                            position: 'right', 
+                            labels: { color: '#8b9bb4', font: {family: "'Noto Sans TC', sans-serif", size: 11}, boxWidth: 12 } 
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) { label += ': '; }
+                                    if (context.parsed !== null) { label += '$' + context.parsed.toLocaleString(); }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
 
         // --- UI 渲染 ---
         function updateHistorySelect() {
@@ -873,16 +843,13 @@
             }
         }
 
-
         function viewHistory(cardId) {
             document.getElementById('history-card-select').value = cardId;
             switchTab('history', document.querySelectorAll('.nav-btn')[1]);
             renderHistory();
         }
 
-
         function renderCards() {
-            // 顯示最後備份時間
             const backupInfoEl = document.getElementById('last-backup-info');
             if (appData.lastBackupTime) {
                 const d = new Date(appData.lastBackupTime);
@@ -893,93 +860,109 @@
                 backupInfoEl.style.display = 'none';
             }
 
-
             const container = document.getElementById('cards-container');
+            const overviewContainer = document.getElementById('overview-container');
+            const sortToolbar = document.getElementById('sort-toolbar');
             container.innerHTML = '';
-           
+            
             if (appData.cards.length === 0) {
+                overviewContainer.style.display = 'none';
+                sortToolbar.style.display = 'none';
                 container.innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top:50px;">資料庫無卡片紀錄<br>請至「系統設定」建立新卡片</p>';
                 return;
             }
 
+            overviewContainer.style.display = 'block';
+            sortToolbar.style.display = 'flex';
+
+            // --- 執行排序 ---
+            let sortedCards = [...appData.cards];
+            const sortType = document.getElementById('card-sort-select').value;
+            
+            if (sortType === 'balance-desc') {
+                sortedCards.sort((a,b) => b.balance - a.balance);
+            } else if (sortType === 'balance-asc') {
+                sortedCards.sort((a,b) => a.balance - b.balance);
+            } else if (sortType === 'type') {
+                sortedCards.sort((a,b) => a.type.localeCompare(b.type));
+            } else if (sortType === 'topup-desc') {
+                sortedCards.sort((a,b) => getTopupCount(b.id) - getTopupCount(a.id));
+            } else if (sortType === 'reg-desc') {
+                sortedCards.sort((a,b) => getYearlyRegCount(b.id) - getYearlyRegCount(a.id));
+            }
+
+            // 繪製圖表
+            renderOverviewChart(sortedCards);
 
             const currentYear = new Date().getFullYear();
             const currentMonth = new Date().getMonth();
 
-
-            appData.cards.forEach(card => {
+            sortedCards.forEach(card => {
                 let typeClass = card.type === '悠遊卡' ? 'type-easy' : (card.type === '一卡通' ? 'type-ipass' : 'type-icash');
-               
+                
                 let infoHtml = '';
                 let regBtnHtml = '';
-               
-                // 檢查該月是否有儲值記錄
-                const hasTopupThisMonth = appData.transactions.some(t =>
-                    t.cardId === card.id &&
-                    t.type === '儲值' &&
+                
+                const hasTopupThisMonth = appData.transactions.some(t => 
+                    t.cardId === card.id && 
+                    t.type === '儲值' && 
                     new Date(t.timestamp).getFullYear() === currentYear &&
                     new Date(t.timestamp).getMonth() === currentMonth
                 );
 
-
                 if(hasTopupThisMonth) {
                     const displayMonth = currentMonth + 1;
-                    infoHtml += `<div style="color:var(--neon-green); font-size:13px; font-weight:bold; margin-bottom:5px; text-shadow:0 0 5px rgba(1,255,195,0.4);">⚡ ${displayMonth}月已自動儲值</div>`;
+                    infoHtml += `<div style="color:var(--neon-green); font-weight:bold; text-shadow:0 0 5px rgba(1,255,195,0.4);">⚡ ${displayMonth}月已自動儲值</div>`;
+                } else {
+                    infoHtml += `<div style="color:var(--text-muted);">無最新儲值</div>`;
                 }
-               
-                // 悠遊卡專屬邏輯
+                
                 if (card.type === '悠遊卡') {
                     const regCount = getYearlyRegCount(card.id);
-                    infoHtml += `<div>本年度 回饋10%活動 登錄次數：<b style="color:var(--neon-purple);">${regCount}</b> 次</div>`;
-                    // 將登錄按鈕保留並放在動作區
-                    regBtnHtml = `<button class="btn btn-reg" onclick="openActionModal('${card.id}', '登錄')">登錄</button>`;
+                    infoHtml += `<div style="border-left:1px solid rgba(255,255,255,0.1); padding-left:10px;">登錄: <b style="color:var(--neon-purple);">${regCount}</b> 次</div>`;
+                    regBtnHtml = `<button class="btn-sm btn-sm-reg" onclick="openActionModal('${card.id}', '登錄')">登錄</button>`;
                 }
-               
-                // 卡片號碼資訊 (透過格式化函式處理)
+                
                 const formattedCredit = formatCardNumber(card.creditNum);
                 const formattedTransit = formatCardNumber(card.transitNum);
-               
-                let numbersHtml = `
-                    <div class="card-numbers">
-                        <div>信用卡號: <span>${formattedCredit}</span></div>
-                        <div>票證卡號: <span>${formattedTransit}</span></div>
-                    </div>
-                `;
 
-
+                // 將所有動作整合到緊湊的快捷列
                 container.innerHTML += `
                     <div class="card-item">
-                        <div class="card-header">
+                        <div class="card-top-row">
                             <div style="display:flex; align-items:center; gap:8px;">
+                                <div class="card-type ${typeClass}">${card.type}</div>
                                 <div class="card-title">${card.name}</div>
-                                <button class="btn-icon" onclick="openEditCardModal('${card.id}')" title="編輯卡片資訊">✏️</button>
                             </div>
-                            <div class="card-type ${typeClass}">${card.type}</div>
+                            <div class="card-balance-compact">$${card.balance.toLocaleString()}</div>
                         </div>
-                        ${numbersHtml}
-                        <div class="card-balance-label">當前餘額</div>
-                        <div class="card-balance">$ ${card.balance.toLocaleString()}</div>
-                        <div class="card-info">${infoHtml || '<span style="opacity:0.5;">系統運作正常</span>'}</div>
-                       
-                        <div class="card-actions">
-                            <button class="btn btn-deduct" onclick="openActionModal('${card.id}', '扣款')">扣款</button>
-                            <button class="btn btn-balance" onclick="openBalanceModal('${card.id}')">改餘額</button>
+                        
+                        <div class="card-numbers">
+                            <div>💳 信: <span>${formattedCredit}</span></div>
+                            <div>🎫 票: <span>${formattedTransit}</span></div>
+                        </div>
+                        
+                        <div class="card-info">${infoHtml}</div>
+                        
+                        <div class="card-actions-compact">
+                            <button class="btn-sm btn-sm-deduct" onclick="openActionModal('${card.id}', '扣款')">扣款</button>
+                            <button class="btn-sm btn-sm-calib" onclick="openBalanceModal('${card.id}')">校正</button>
                             ${regBtnHtml}
+                            <button class="btn-sm btn-sm-edit" onclick="openEditCardModal('${card.id}')">編輯</button>
+                            <button class="btn-sm btn-sm-hist" onclick="viewHistory('${card.id}')">記錄</button>
                         </div>
-                        <div class="card-history-link" onclick="viewHistory('${card.id}')">查看記錄 ➔</div>
                     </div>
                 `;
             });
         }
 
-
         function renderHistory() {
             const container = document.getElementById('history-container');
             const selectedId = document.getElementById('history-card-select').value;
             container.innerHTML = '';
-           
+            
             let filtered = appData.transactions;
-           
+            
             if (selectedId && selectedId !== 'all') {
                 filtered = filtered.filter(t => t.cardId === selectedId);
             } else {
@@ -987,26 +970,20 @@
                 return;
             }
 
-
             if (filtered.length === 0) {
                 container.innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top:30px;">查無歷史記錄資料</p>';
                 return;
             }
 
-
-            // 依時間倒序排列
             const sorted = [...filtered].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
 
             sorted.forEach(t => {
                 const dateObj = new Date(t.timestamp);
                 const timeStr = `${dateObj.getFullYear()}/${(dateObj.getMonth()+1).toString().padStart(2,'0')}/${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
-               
+                
                 let amtHtml = '';
                 let typeStyleClass = '';
 
-
-                // 根據類型設定顏色與樣式
                 if (t.type === '扣款') {
                     typeStyleClass = 'hist-deduct';
                     amtHtml = `<span class="history-amount amt-deduct">- $${t.amount.toLocaleString()}</span>`;
@@ -1022,9 +999,7 @@
                     amtHtml = `<span class="history-amount amt-reg" style="font-size:14px;">[ 系統紀錄 ]</span>`;
                 }
 
-
                 let memoHtml = t.memo ? `<span style="font-size:13px; color:var(--text-muted); font-weight:normal;"> <br>📝 ${t.memo}</span>` : '';
-
 
                 container.innerHTML += `
                     <div class="history-item ${typeStyleClass}">
@@ -1041,49 +1016,39 @@
             });
         }
 
-
         function switchTab(tabId, btn) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active-tab'));
             document.getElementById(`tab-${tabId}`).classList.add('active-tab');
-           
+            
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
             if(btn) btn.classList.add('active');
-           
-            // 如果切換到卡片頁，回到頂部
+            
             if(tabId === 'cards') window.scrollTo(0,0);
         }
 
-
         // --- 備份與還原 ---
         function triggerAutoBackup() {
-            // 每次操作增加未備份計數
             appData.unsavedCount = (appData.unsavedCount || 0) + 1;
             saveData();
-
-
             setTimeout(() => {
                 if (appData.unsavedCount >= 10) {
-                    // 移除 alert 提示窗，直接自動觸發下載
-                    exportBackup(true);
+                    exportBackup(true); 
                 }
             }, 300);
         }
 
-
         function exportBackup(isAuto) {
-            // 下載前將計數器歸零、記錄備份時間並存檔
             appData.unsavedCount = 0;
             appData.lastBackupTime = new Date().toISOString();
             saveData();
 
-
             const dataStr = JSON.stringify(appData, null, 2);
             const blob = new Blob([dataStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-           
+            
             const dateObj = new Date();
             const dateStr = `${dateObj.getFullYear()}${(dateObj.getMonth()+1).toString().padStart(2,'0')}${dateObj.getDate().toString().padStart(2,'0')}_${dateObj.getHours().toString().padStart(2,'0')}${dateObj.getMinutes().toString().padStart(2,'0')}`;
-           
+            
             const a = document.createElement('a');
             a.href = url;
             a.download = `票證備份_${dateStr}.json`;
@@ -1092,15 +1057,12 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-
             if(!isAuto) alert('備份檔下載程序已啟動！');
         }
-
 
         function importBackup(event) {
             const file = event.target.files[0];
             if (!file) return;
-
 
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -1117,11 +1079,10 @@
                 } catch (err) {
                     alert('讀取檔案失敗：' + err.message);
                 }
-                event.target.value = ''; // Reset input
+                event.target.value = ''; 
             };
             reader.readAsText(file);
         }
-
 
         // --- 單檔 PWA 動態生成 ---
         function setupPWA() {
@@ -1152,7 +1113,6 @@
             link.href = manifestUrl;
             document.head.appendChild(link);
 
-
             const swCode = `
                 self.addEventListener('fetch', event => {
                     event.respondWith(
@@ -1170,14 +1130,12 @@
             const swBlob = new Blob([swCode], {type: 'application/javascript'});
             const swUrl = URL.createObjectURL(swBlob);
 
-
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register(swUrl).then(() => {
                     console.log('PWA System Active');
                 }).catch(err => console.log('SW Error', err));
             }
         }
-
 
         window.onload = init;
     </script>
