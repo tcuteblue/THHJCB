@@ -71,7 +71,7 @@
         .type-ipass { background: linear-gradient(135deg, #F39800, var(--neon-orange)); }
         .type-icash { background: linear-gradient(135deg, #E60012, var(--neon-pink)); }
        
-        .btn-gear { background: none; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer; padding: 2px; transition: all 0.3s; } /* 縮小基準字體 22 -> 16 */
+        .btn-gear { background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; padding: 4px; transition: all 0.3s; }
         .btn-gear:hover { color: var(--neon-cyan); transform: rotate(90deg); }
 
 
@@ -642,7 +642,7 @@
 
             cont.innerHTML = viewData.map(v => `
                 <div class="card-item" id="card-view-${v.id}">
-                    <div class="card-top-row"><div style="display:flex; align-items:center; gap:6px; flex:1; margin-right:5px;"><div class="card-type ${v.cls}" style="flex-shrink:0;">${v.type}</div><div class="card-title" style="display:flex; align-items:center; gap:4px; flex:1;"><span>${v.name}</span><button class="btn-gear" style="font-size:14px; padding:0; flex-shrink:0;" onclick="viewHistory('${v.id}')">📜</button></div></div><div style="display:flex; align-items:center; gap:8px; flex-shrink:0;"><div class="card-balance-compact">$${v.balance.toLocaleString()}</div><button class="btn-gear" style="flex-shrink:0; font-size:16px;" onclick="openEditCardModal('${v.id}')">⚙️</button></div></div>
+                    <div class="card-top-row"><div style="display:flex; align-items:center; gap:8px; flex:1; margin-right:5px;"><div class="card-type ${v.cls}" style="flex-shrink:0;">${v.type}</div><div class="card-title" style="display:flex; align-items:center; gap:6px; flex:1;"><span>${v.name}</span><button class="btn-gear" style="font-size:18px; padding:0; flex-shrink:0;" onclick="viewHistory('${v.id}')">📜</button></div></div><div style="display:flex; align-items:center; gap:10px; flex-shrink:0;"><div class="card-balance-compact">$${v.balance.toLocaleString()}</div><button class="btn-gear" style="flex-shrink:0;" onclick="openEditCardModal('${v.id}')">⚙️</button></div></div>
                     <div class="card-numbers"><div>💳 信: <span>${v.cred}</span></div><div>🎫 票: <span>${v.trans}</span></div></div>
                     <div class="card-info">${v.topups > 0 ? `<div style="color:var(--neon-green); font-weight:bold; text-shadow:0 0 5px rgba(1,255,195,0.4);">⚡ ${currentMonth}月已儲值</div>` : `<div style="color:var(--text-muted);">無最新儲值</div>`} ${v.isJCB ? `<div style="border-left:1px solid rgba(255,255,255,0.1); padding-left:10px;">登錄: <b style="color:var(--neon-purple);">${v.regs}</b> 次</div>` : ''}</div>
                     <div class="card-actions-compact" ${v.isJCB ? '' : 'style="justify-content:center;"'}>
