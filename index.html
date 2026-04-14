@@ -620,13 +620,14 @@
             const currentMonth = new Date().getMonth() + 1;
             const viewData = sorted.map(c => {
                 const isJCB = c.type === '悠遊卡' && c.isJCB !== false;
-                return { ...c, isJCB, topups: getMonthlyTopupCount(c.id), regs: isJCB ? getYearlyRegCount(c.id) : null, cls: c.type === '悠遊卡' ? 'type-easy' : (c.type === '一卡通' ? 'type-ipass' : 'type-icash'), starCls: c.isStarred ? 'active' : '', cred: formatCardNumber(c.creditNum), trans: formatCardNumber(c.transitNum) };
+                const displayName = c.name.length >= 11 ? c.name.substring(0, 10) + '...' : c.name;
+                return { ...c, isJCB, topups: getMonthlyTopupCount(c.id), regs: isJCB ? getYearlyRegCount(c.id) : null, cls: c.type === '悠遊卡' ? 'type-easy' : (c.type === '一卡通' ? 'type-ipass' : 'type-icash'), starCls: c.isStarred ? 'active' : '', cred: formatCardNumber(c.creditNum), trans: formatCardNumber(c.transitNum), displayName };
             });
 
 
             document.getElementById('overview-table-body').innerHTML = `<tr><th>名稱</th><th style="width:23%;text-align:right;">餘額</th><th style="width:23%;text-align:center;">本月儲值</th><th style="width:23%;text-align:center;">登錄次數</th></tr>` +
                 viewData.map(v => `<tr class="clickable-row sortable-row" data-id="${v.id}" draggable="true" onclick="if(!window.isDragging) scrollToCard('${v.id}')">
-                    <td style="white-space:nowrap;"><span class="drag-handle">☰</span><span class="star-btn ${v.starCls}" onclick="toggleStar(event, '${v.id}')">${v.isStarred ? '★' : '☆'}</span><span class="card-type ${v.cls}" style="font-size:12px; padding:3px 6px; vertical-align:middle; display:inline-block;">${v.type}</span> <span style="vertical-align:middle;">${v.name}</span></td>
+                    <td style="white-space:nowrap;"><span class="drag-handle">☰</span><span class="star-btn ${v.starCls}" onclick="toggleStar(event, '${v.id}')">${v.isStarred ? '★' : '☆'}</span><span class="card-type ${v.cls}" style="font-size:12px; padding:3px 6px; vertical-align:middle; display:inline-block;">${v.type}</span> <span style="vertical-align:middle;" title="${v.name}">${v.displayName}</span></td>
                     <td class="val-num" style="text-align:right; vertical-align:middle;">$${v.balance.toLocaleString()}</td><td class="val-num" style="text-align:center; vertical-align:middle;">${v.topups}</td>
                     <td class="val-num" style="text-align:center; color:var(--neon-purple); vertical-align:middle;">${v.regs !== null ? v.regs : '<span style="color:var(--text-muted);">-</span>'}</td></tr>`).join('');
 
@@ -642,7 +643,7 @@
 
             cont.innerHTML = viewData.map(v => `
                 <div class="card-item" id="card-view-${v.id}">
-                    <div class="card-top-row"><div style="display:flex; align-items:center; gap:4px; flex:1; margin-right:4px;"><div class="card-type ${v.cls}" style="flex-shrink:0;">${v.type}</div><div class="card-title" style="display:flex; align-items:center; gap:4px; flex:1;"><span style="white-space:nowrap;">${v.name}</span><button class="btn-gear" style="font-size:18px; padding:0; flex-shrink:0;" onclick="viewHistory('${v.id}')">📜</button></div></div><div style="display:flex; align-items:center; gap:6px; flex-shrink:0;"><div class="card-balance-compact">$${v.balance.toLocaleString()}</div><button class="btn-gear" style="flex-shrink:0;" onclick="openEditCardModal('${v.id}')">⚙️</button></div></div>
+                    <div class="card-top-row"><div style="display:flex; align-items:center; gap:4px; flex:1; margin-right:4px; min-width:0;"><div class="card-type ${v.cls}" style="flex-shrink:0;">${v.type}</div><div class="card-title" style="display:flex; align-items:center; gap:4px; flex:1; min-width:0;"><span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${v.name}">${v.displayName}</span><button class="btn-gear" style="font-size:18px; padding:0; flex-shrink:0;" onclick="viewHistory('${v.id}')">📜</button></div></div><div style="display:flex; align-items:center; gap:6px; flex-shrink:0;"><div class="card-balance-compact">$${v.balance.toLocaleString()}</div><button class="btn-gear" style="flex-shrink:0;" onclick="openEditCardModal('${v.id}')">⚙️</button></div></div>
                     <div class="card-numbers"><div>💳 信: <span>${v.cred}</span></div><div>🎫 票: <span>${v.trans}</span></div></div>
                     <div class="card-info">${v.topups > 0 ? `<div style="color:var(--neon-green); font-weight:bold; text-shadow:0 0 5px rgba(1,255,195,0.4);">⚡ ${currentMonth}月已儲值</div>` : `<div style="color:var(--text-muted);">無最新儲值</div>`} ${v.isJCB ? `<div style="border-left:1px solid rgba(255,255,255,0.1); padding-left:10px;">登錄: <b style="color:var(--neon-purple);">${v.regs}</b> 次</div>` : ''}</div>
                     <div class="card-actions-compact" ${v.isJCB ? '' : 'style="justify-content:center;"'}>
