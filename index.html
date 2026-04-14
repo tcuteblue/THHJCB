@@ -71,7 +71,7 @@
         .type-ipass { background: linear-gradient(135deg, #F39800, var(--neon-orange)); }
         .type-icash { background: linear-gradient(135deg, #E60012, var(--neon-pink)); }
        
-        .btn-gear { background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; padding: 4px; transition: all 0.3s; } /* 18 -> 22 */
+        .btn-gear { background: none; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer; padding: 2px; transition: all 0.3s; } /* 縮小基準字體 22 -> 16 */
         .btn-gear:hover { color: var(--neon-cyan); transform: rotate(90deg); }
 
 
@@ -160,8 +160,12 @@
         <div id="last-backup-info" class="backup-notice"></div>
        
         <div class="overview-card" id="overview-container" style="display:none;">
-            <div style="text-align:center; font-size:16px; font-weight:bold; color:var(--text-main); letter-spacing:2px; margin-bottom:12px;">📊 卡片資訊總覽</div>
-            <table class="overview-table"><tbody id="overview-table-body"></tbody></table>
+            <div onclick="toggleOverview()" style="cursor:pointer; text-align:center; font-size:16px; font-weight:bold; color:var(--text-main); letter-spacing:2px; display:flex; justify-content:center; align-items:center; gap:8px;">
+                📊 卡片資訊總覽 <span id="overview-toggle-icon" style="transition: transform 0.3s ease; font-size: 14px; color: var(--neon-cyan);">▼</span>
+            </div>
+            <div id="overview-content" style="margin-top: 12px;">
+                <table class="overview-table"><tbody id="overview-table-body"></tbody></table>
+            </div>
         </div>
 
 
@@ -288,7 +292,7 @@
     <script>
         // --- 核心變數與初始化 ---
         const DB_KEY = 'TransitApp_Data';
-        let appData = { cards: [], transactions: [], customOrder: [], unsavedCount: 0 };
+        let appData = { cards: [], transactions: [], customOrder: [], unsavedCount: 0, isOverviewCollapsed: false };
         let deferredPrompt, currentAction = { cardId: null, type: null };
 
 
@@ -387,6 +391,23 @@
         function scrollToCard(id) { const el = document.getElementById('card-view-' + id); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.boxShadow = '0 0 20px 5px var(--neon-cyan)'; setTimeout(() => el.style.boxShadow = '', 1500); } }
         function switchTab(id, btn) { document.querySelectorAll('.tab-content, .nav-btn').forEach(el => el.classList.remove('active-tab', 'active')); document.getElementById(`tab-${id}`).classList.add('active-tab'); if(btn) btn.classList.add('active'); if(id === 'cards') window.scrollTo(0,0); }
         function closeModal(id = 'action-modal') { document.getElementById(id).style.display = 'none'; }
+
+
+        function toggleOverview() {
+            appData.isOverviewCollapsed = !appData.isOverviewCollapsed;
+            saveData();
+           
+            const content = document.getElementById('overview-content');
+            const icon = document.getElementById('overview-toggle-icon');
+           
+            if (appData.isOverviewCollapsed) {
+                content.style.display = 'none';
+                icon.style.transform = 'rotate(-90deg)';
+            } else {
+                content.style.display = 'block';
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
 
 
         function resetCustomSort() {
@@ -557,6 +578,17 @@
            
             if (!appData.cards.length) { over.style.display = 'none'; tool.style.display = 'none'; cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:16px; margin-top:50px;">無卡片紀錄，請至系統設定建立</p>'; return; }
             over.style.display = 'block'; tool.style.display = 'flex';
+           
+            // 套用收折狀態
+            const overviewContent = document.getElementById('overview-content');
+            const overviewIcon = document.getElementById('overview-toggle-icon');
+            if (appData.isOverviewCollapsed) {
+                overviewContent.style.display = 'none';
+                overviewIcon.style.transform = 'rotate(-90deg)';
+            } else {
+                overviewContent.style.display = 'block';
+                overviewIcon.style.transform = 'rotate(0deg)';
+            }
 
 
             const sortType = document.getElementById('card-sort-select').value;
@@ -610,7 +642,7 @@
 
             cont.innerHTML = viewData.map(v => `
                 <div class="card-item" id="card-view-${v.id}">
-                    <div class="card-top-row"><div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0; margin-right:10px;"><div class="card-type ${v.cls}" style="flex-shrink:0;">${v.type}</div><div class="card-title" style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;"><span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${v.name}</span><button class="btn-gear" style="font-size:18px; padding:0; flex-shrink:0;" onclick="viewHistory('${v.id}')">📜</button></div></div><div style="display:flex; align-items:center; gap:12px; flex-shrink:0;"><div class="card-balance-compact">$${v.balance.toLocaleString()}</div><button class="btn-gear" style="flex-shrink:0;" onclick="openEditCardModal('${v.id}')">⚙️</button></div></div>
+                    <div class="card-top-row"><div style="display:flex; align-items:center; gap:6px; flex:1; margin-right:5px;"><div class="card-type ${v.cls}" style="flex-shrink:0;">${v.type}</div><div class="card-title" style="display:flex; align-items:center; gap:4px; flex:1;"><span>${v.name}</span><button class="btn-gear" style="font-size:14px; padding:0; flex-shrink:0;" onclick="viewHistory('${v.id}')">📜</button></div></div><div style="display:flex; align-items:center; gap:8px; flex-shrink:0;"><div class="card-balance-compact">$${v.balance.toLocaleString()}</div><button class="btn-gear" style="flex-shrink:0; font-size:16px;" onclick="openEditCardModal('${v.id}')">⚙️</button></div></div>
                     <div class="card-numbers"><div>💳 信: <span>${v.cred}</span></div><div>🎫 票: <span>${v.trans}</span></div></div>
                     <div class="card-info">${v.topups > 0 ? `<div style="color:var(--neon-green); font-weight:bold; text-shadow:0 0 5px rgba(1,255,195,0.4);">⚡ ${currentMonth}月已儲值</div>` : `<div style="color:var(--text-muted);">無最新儲值</div>`} ${v.isJCB ? `<div style="border-left:1px solid rgba(255,255,255,0.1); padding-left:10px;">登錄: <b style="color:var(--neon-purple);">${v.regs}</b> 次</div>` : ''}</div>
                     <div class="card-actions-compact" ${v.isJCB ? '' : 'style="justify-content:center;"'}>
