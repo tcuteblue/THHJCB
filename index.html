@@ -9,6 +9,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Noto+Sans+TC:wght@400;700&display=swap');
 
+
         :root {
             --bg-color: #0b0f19;
             --glass-bg: rgba(20, 27, 45, 0.7);
@@ -22,115 +23,120 @@
             --neon-purple: #b366ff;
         }
 
+
         * { box-sizing: border-box; }
-        
-        body { 
-            font-family: 'Noto Sans TC', -apple-system, sans-serif; 
-            margin: 0; padding: 0; padding-bottom: 80px; 
-            background-color: var(--bg-color); 
+       
+        body {
+            font-family: 'Noto Sans TC', -apple-system, sans-serif;
+            margin: 0; padding: 0; padding-bottom: 95px; /* 加大底部空間以容納變大的 Navbar */
+            background-color: var(--bg-color);
             background-image: radial-gradient(circle at 15% 50%, rgba(5, 217, 232, 0.05), transparent 25%), radial-gradient(circle at 85% 30%, rgba(255, 42, 109, 0.05), transparent 25%);
             background-attachment: fixed;
-            color: var(--text-main); 
+            color: var(--text-main);
         }
-        
+       
         /* Navbar & Tabs */
-        .header { 
-            background: rgba(11, 15, 25, 0.8); backdrop-filter: blur(10px); color: var(--neon-cyan); 
-            padding: 15px 20px; text-align: center; font-size: 22px; font-weight: bold; 
+        .header {
+            background: rgba(11, 15, 25, 0.8); backdrop-filter: blur(10px); color: var(--neon-cyan);
+            padding: 18px 20px; text-align: center; font-size: 26px; font-weight: bold; /* 22 -> 26 */
             font-family: 'Orbitron', 'Noto Sans TC', sans-serif; letter-spacing: 2px;
             position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--glass-border); text-shadow: 0 0 10px rgba(5, 217, 232, 0.5);
         }
-        
+       
         .tab-content { display: none; padding: 15px; max-width: 600px; margin: 0 auto; animation: fadeIn 0.3s ease-in-out; }
         .active-tab { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .bottom-nav { 
+
+        .bottom-nav {
             display: flex; justify-content: space-around; background: rgba(11, 15, 25, 0.85); backdrop-filter: blur(15px);
-            position: fixed; bottom: 0; width: 100%; border-top: 1px solid var(--glass-border); padding: 12px 0; z-index: 10; 
+            position: fixed; bottom: 0; width: 100%; border-top: 1px solid var(--glass-border); padding: 14px 0; z-index: 10;
         }
-        .nav-btn { background: none; border: none; font-size: 14px; color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; width: 33%; transition: all 0.3s; }
-        .nav-icon { font-size: 22px; margin-bottom: 4px; transition: all 0.3s;}
+        .nav-btn { background: none; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; width: 33%; transition: all 0.3s; } /* 14 -> 16 */
+        .nav-icon { font-size: 26px; margin-bottom: 5px; transition: all 0.3s;} /* 22 -> 26 */
         .nav-btn.active { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(5, 217, 232, 0.5); }
         .nav-btn.active .nav-icon { transform: translateY(-3px) scale(1.1); }
-        
+       
         /* Cards */
-        .card-item { 
-            background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 12px; 
-            padding: 12px 15px; margin-bottom: 15px; box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.3); position: relative; overflow: hidden; transition: box-shadow 0.4s ease-out; 
+        .card-item {
+            background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 12px;
+            padding: 15px 18px; margin-bottom: 18px; box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.3); position: relative; overflow: hidden; transition: box-shadow 0.4s ease-out;
         }
-        .card-item::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple)); }
-        
-        .card-top-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 8px; }
-        .card-title { font-size: 16px; font-weight: bold; letter-spacing: 1px; color: #fff;}
-        .card-type { font-size: 11px; padding: 3px 8px; border-radius: 12px; color: #fff; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5);}
-        .type-easy { background: linear-gradient(135deg, #0088A8, var(--neon-cyan)); } 
-        .type-ipass { background: linear-gradient(135deg, #F39800, var(--neon-orange)); } 
-        .type-icash { background: linear-gradient(135deg, #E60012, var(--neon-pink)); } 
-        
-        .btn-gear { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; padding: 2px; transition: all 0.3s; }
+        .card-item::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple)); }
+       
+        .card-top-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px; }
+        .card-title { font-size: 18px; font-weight: bold; letter-spacing: 1px; color: #fff;} /* 16 -> 18 */
+        .card-type { font-size: 13px; padding: 4px 10px; border-radius: 12px; color: #fff; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5);} /* 11 -> 13 */
+        .type-easy { background: linear-gradient(135deg, #0088A8, var(--neon-cyan)); }
+        .type-ipass { background: linear-gradient(135deg, #F39800, var(--neon-orange)); }
+        .type-icash { background: linear-gradient(135deg, #E60012, var(--neon-pink)); }
+       
+        .btn-gear { background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; padding: 4px; transition: all 0.3s; } /* 18 -> 22 */
         .btn-gear:hover { color: var(--neon-cyan); transform: rotate(90deg); }
 
-        .card-numbers { font-size: 11px; color: var(--text-muted); background: rgba(0,0,0,0.25); padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; font-family: 'Orbitron', 'Noto Sans TC', sans-serif; display: flex; justify-content: space-between; gap: 5px; }
+
+        .card-numbers { font-size: 13px; color: var(--text-muted); background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; font-family: 'Orbitron', 'Noto Sans TC', sans-serif; display: flex; justify-content: space-between; gap: 5px; } /* 11 -> 13 */
         .card-numbers span { color: var(--text-main); font-weight: bold; }
-        .card-balance-compact { font-family: 'Orbitron', sans-serif; font-size: 26px; font-weight: bold; text-align: right; color: #fff; text-shadow: 0 0 10px rgba(5,217,232,0.5);}
-        .card-info { font-size: 12px; color: var(--text-main); text-align: center; margin-bottom: 12px; min-height: 16px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 6px; display:flex; justify-content: space-around; align-items:center;}
-        
+        .card-balance-compact { font-family: 'Orbitron', sans-serif; font-size: 30px; font-weight: bold; text-align: right; color: #fff; text-shadow: 0 0 10px rgba(5,217,232,0.5);} /* 26 -> 30 */
+        .card-info { font-size: 14px; color: var(--text-main); text-align: center; margin-bottom: 14px; min-height: 18px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px; display:flex; justify-content: space-around; align-items:center;} /* 12 -> 14 */
+       
         /* Actions */
-        .card-actions-compact { display: flex; gap: 10px; justify-content: space-between; }
-        .btn-sm { padding: 10px 4px; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; flex: 1; color: white; transition: all 0.2s; text-shadow: 0 1px 2px rgba(0,0,0,0.3); text-align: center; letter-spacing: 1px; }
+        .card-actions-compact { display: flex; gap: 12px; justify-content: space-between; }
+        .btn-sm { padding: 12px 6px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1; color: white; transition: all 0.2s; text-shadow: 0 1px 2px rgba(0,0,0,0.3); text-align: center; letter-spacing: 1px; } /* 14 -> 16 */
         .btn-sm:active { transform: scale(0.95); }
         .btn-sm-deduct { background: linear-gradient(135deg, #d80032, var(--neon-pink)); box-shadow: 0 2px 8px rgba(255,42,109,0.3); }
         .btn-sm-reg { background: linear-gradient(135deg, #6a00f4, var(--neon-purple)); box-shadow: 0 2px 8px rgba(179,102,255,0.3); }
-        
+       
         /* Table */
         .overview-card { background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.3); }
-        .overview-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
-        .overview-table th { color: var(--neon-cyan); padding: 8px 4px; border-bottom: 1px solid var(--glass-border); font-weight: normal; }
-        .overview-table td { padding: 8px 4px; border-bottom: 1px dashed rgba(255,255,255,0.05); color: var(--text-main); }
+        .overview-table { width: 100%; border-collapse: collapse; font-size: 15px; text-align: left; } /* 13 -> 15 */
+        .overview-table th { color: var(--neon-cyan); padding: 10px 4px; border-bottom: 1px solid var(--glass-border); font-weight: normal; }
+        .overview-table td { padding: 10px 4px; border-bottom: 1px dashed rgba(255,255,255,0.05); color: var(--text-main); }
         .overview-table tr:last-child td { border-bottom: none; }
         .val-num { font-family: 'Orbitron', sans-serif; font-weight: bold; color: #fff;}
-        .star-btn { cursor: pointer; color: var(--text-muted); font-size: 16px; margin: 0 2px; transition: 0.2s; user-select: none; }
+        .star-btn { cursor: pointer; color: var(--text-muted); font-size: 20px; margin: 0 4px; transition: 0.2s; user-select: none; } /* 16 -> 20 */
         .star-btn:hover { color: var(--neon-orange); }
         .star-btn.active { color: var(--neon-orange); text-shadow: 0 0 8px rgba(255, 179, 15, 0.6); }
         .clickable-row { cursor: pointer; transition: 0.2s ease; }
         .clickable-row:hover { background: rgba(255,255,255,0.08); border-radius: 4px; }
         .sortable-row.dragging { background: rgba(5, 217, 232, 0.15) !important; opacity: 0.7; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .drag-handle { cursor: grab; margin-right: 4px; color: var(--text-muted); font-size: 14px; transition: color 0.2s; }
+        .drag-handle { cursor: grab; margin-right: 6px; color: var(--text-muted); font-size: 18px; transition: color 0.2s; } /* 14 -> 18 */
         .drag-handle:hover { color: var(--neon-cyan); }
         .sortable-row:active .drag-handle { cursor: grabbing; }
 
+
         /* General UI Elements */
         .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 8px; }
-        .btn-install { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #000; font-weight: bold; box-shadow: 0 4px 15px rgba(5,217,232,0.5); width: 100%; padding: 12px; border-radius: 8px; margin-bottom: 15px; cursor: pointer; border: none;}
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--neon-cyan); letter-spacing: 1px;}
-        .form-control { width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-size: 15px; color: #fff; transition: all 0.3s; }
+        .btn-install { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #000; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(5,217,232,0.5); width: 100%; padding: 14px; border-radius: 8px; margin-bottom: 15px; cursor: pointer; border: none;}
+        .form-group { margin-bottom: 22px; }
+        .form-group label { display: block; margin-bottom: 10px; font-size: 16px; color: var(--neon-cyan); letter-spacing: 1px;} /* 14 -> 16 */
+        .form-control { width: 100%; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-size: 17px; color: #fff; transition: all 0.3s; } /* 15 -> 17 */
         .form-control:focus { outline: none; border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(5,217,232,0.3); background: rgba(0,0,0,0.5);}
-        select.form-control { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2305d9e8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 10px center; background-size: 1em; }
+        select.form-control { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2305d9e8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 12px center; background-size: 1em; }
         select.form-control option { background: var(--bg-color); color: #fff; }
-        .checkbox-label { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #fff; cursor: pointer; padding: 4px 0; margin-bottom: 0 !important; }
-        .checkbox-label input { width: 18px; height: 18px; accent-color: var(--neon-cyan); cursor: pointer; }
-        .btn-block { width: 100%; padding: 14px; font-size: 16px; margin-bottom: 10px; background: linear-gradient(135deg, #00b4d8, var(--neon-cyan)); color: #000; font-weight: bold; box-shadow: 0 4px 15px rgba(5,217,232,0.3); border:none; border-radius:8px; cursor:pointer;}
+        .checkbox-label { display: flex; align-items: center; gap: 10px; font-size: 16px; color: #fff; cursor: pointer; padding: 6px 0; margin-bottom: 0 !important; } /* 14 -> 16 */
+        .checkbox-label input { width: 20px; height: 20px; accent-color: var(--neon-cyan); cursor: pointer; }
+        .btn-block { width: 100%; padding: 16px; font-size: 18px; margin-bottom: 12px; background: linear-gradient(135deg, #00b4d8, var(--neon-cyan)); color: #000; font-weight: bold; box-shadow: 0 4px 15px rgba(5,217,232,0.3); border:none; border-radius:8px; cursor:pointer;} /* 16 -> 18 */
         .btn-backup { background: linear-gradient(135deg, #7b2cbf, var(--neon-purple)); color: #fff; box-shadow: 0 4px 15px rgba(179,102,255,0.3); }
         .btn-action-alt { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; box-shadow: none; font-weight: normal;}
         .btn-action-alt:hover { background: rgba(255,255,255,0.2); }
         .btn-danger-alt { background: rgba(255,42,109,0.1); border: 1px solid rgba(255,42,109,0.3); color: var(--neon-pink); box-shadow: none; font-weight: normal; margin-top: 10px; }
-        
+       
         /* Modals */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20; justify-content: center; align-items: center; }
-        .modal { background: #161b29; border: 1px solid var(--neon-cyan); padding: 25px; border-radius: 16px; width: 90%; max-width: 380px; max-height: 90vh; overflow-y: auto; box-shadow: 0 0 30px rgba(5,217,232,0.2); }
-        .modal h3 { margin-top: 0; color: var(--neon-cyan); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 20px;}
+        .modal { background: #161b29; border: 1px solid var(--neon-cyan); padding: 25px; border-radius: 16px; width: 90%; max-width: 400px; max-height: 90vh; overflow-y: auto; box-shadow: 0 0 30px rgba(5,217,232,0.2); }
+        .modal h3 { margin-top: 0; font-size: 20px; color: var(--neon-cyan); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 20px;}
         .modal-buttons { display: flex; gap: 15px; margin-top: 25px; flex-wrap: wrap; }
-        .btn-cancel { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; box-shadow: none; flex:1 1 40%; padding:12px; border-radius:8px; cursor:pointer;}
+        .btn-cancel { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; box-shadow: none; flex:1 1 40%; padding:14px; border-radius:8px; cursor:pointer; font-size: 16px;}
+
 
         /* History Items */
-        .history-item { background: var(--glass-bg); padding: 15px; border-radius: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; border: 1px solid rgba(255,255,255,0.05); }
+        .history-item { background: var(--glass-bg); padding: 18px 15px; border-radius: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-start; border: 1px solid rgba(255,255,255,0.05); }
         .history-left { display: flex; flex-direction: column; flex: 1; }
-        .history-time { font-size: 12px; color: var(--text-muted); font-family: 'Orbitron', sans-serif;}
-        .history-desc { font-size: 16px; font-weight: bold; margin-top: 6px; line-height: 1.4; color: #fff;}
+        .history-time { font-size: 14px; color: var(--text-muted); font-family: 'Orbitron', sans-serif;} /* 12 -> 14 */
+        .history-desc { font-size: 18px; font-weight: bold; margin-top: 8px; line-height: 1.4; color: #fff;} /* 16 -> 18 */
         .history-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
-        .history-amount { font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: bold; letter-spacing: 1px;}
+        .history-amount { font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: bold; letter-spacing: 1px;} /* 18 -> 20 */
         .hist-deduct { border-left: 4px solid var(--neon-pink); background: linear-gradient(90deg, rgba(255,42,109,0.1) 0%, var(--glass-bg) 50%); }
         .hist-topup { border-left: 4px solid var(--neon-cyan); background: linear-gradient(90deg, rgba(5,217,232,0.1) 0%, var(--glass-bg) 50%); }
         .hist-calib { border-left: 4px solid var(--neon-orange); background: linear-gradient(90deg, rgba(255,179,15,0.1) 0%, var(--glass-bg) 50%); }
@@ -139,26 +145,28 @@
         .amt-topup { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(5,217,232,0.4);}
         .amt-calib { color: var(--neon-orange); text-shadow: 0 0 8px rgba(255,179,15,0.4);}
         .amt-reg { color: var(--neon-purple); text-shadow: 0 0 8px rgba(179,102,255,0.4);}
-        .btn-edit-hist { margin-top: 10px; padding: 5px 12px; font-size: 12px; cursor: pointer; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff; transition: 0.2s;}
-        .btn-delete-hist { margin-top: 10px; padding: 5px 12px; font-size: 12px; cursor: pointer; background: rgba(255,42,109,0.1); border: 1px solid rgba(255,42,109,0.3); border-radius: 6px; color: var(--neon-pink); transition: 0.2s; margin-left: 6px;}
-        .backup-notice { background: linear-gradient(90deg, rgba(1,255,195,0.1), rgba(1,255,195,0.02)); color: var(--neon-green); padding: 10px; border-radius: 8px; text-align: center; font-size: 13px; margin-bottom: 15px; border: 1px solid rgba(1,255,195,0.3); display: none; }
+        .btn-edit-hist { margin-top: 10px; padding: 6px 14px; font-size: 14px; cursor: pointer; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff; transition: 0.2s;} /* 12 -> 14 */
+        .btn-delete-hist { margin-top: 10px; padding: 6px 14px; font-size: 14px; cursor: pointer; background: rgba(255,42,109,0.1); border: 1px solid rgba(255,42,109,0.3); border-radius: 6px; color: var(--neon-pink); transition: 0.2s; margin-left: 8px;} /* 12 -> 14 */
+        .backup-notice { background: linear-gradient(90deg, rgba(1,255,195,0.1), rgba(1,255,195,0.02)); color: var(--neon-green); padding: 12px; border-radius: 8px; text-align: center; font-size: 15px; margin-bottom: 15px; border: 1px solid rgba(1,255,195,0.3); display: none; } /* 13 -> 15 */
     </style>
 </head>
 <body>
     <div class="header">電子票證管家</div>
 
+
     <!-- Tab: 我的卡片 -->
     <div id="tab-cards" class="tab-content active-tab">
         <button id="install-app-btn" class="btn-install" style="display: none;">📲 安裝為 APP</button>
         <div id="last-backup-info" class="backup-notice"></div>
-        
+       
         <div class="overview-card" id="overview-container" style="display:none;">
-            <div style="text-align:center; font-size:14px; font-weight:bold; color:var(--text-main); letter-spacing:2px; margin-bottom:10px;">📊 卡片資訊總覽</div>
+            <div style="text-align:center; font-size:16px; font-weight:bold; color:var(--text-main); letter-spacing:2px; margin-bottom:12px;">📊 卡片資訊總覽</div>
             <table class="overview-table"><tbody id="overview-table-body"></tbody></table>
         </div>
 
-        <div class="toolbar" id="sort-toolbar" style="display:none;">
-            <div style="font-size:13px; color:var(--text-muted); white-space:nowrap;">排序方式：</div>
+
+        <div class="toolbar" id="sort-toolbar" style="display:none; font-size:15px;">
+            <div style="color:var(--text-muted); white-space:nowrap;">排序方式：</div>
             <select id="card-sort-select" class="form-control" style="flex:1;" onchange="renderCards()">
                 <option value="smart">🧠 智慧推薦 (優先登錄/儲值)</option>
                 <option value="custom">✋ 自訂排序 (拖曳總覽表格)</option>
@@ -166,16 +174,18 @@
                 <option value="balance">💰 卡片餘額 (金額高低切換)</option>
                 <option value="type">🏷️ 卡片種類 (依票證類型)</option>
             </select>
-            <button id="reset-sort-btn" class="btn-action-alt" style="display:none; padding: 8px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap; font-size: 13px; margin: 0;" onclick="resetCustomSort()" title="回復成預設新增順序">🔄 重置</button>
-            <button id="balance-sort-btn" class="btn-action-alt" style="display:none; padding: 8px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap; font-size: 13px; margin: 0;" onclick="toggleBalanceSort()"></button>
+            <button id="reset-sort-btn" class="btn-action-alt" style="display:none; padding: 10px 14px; border-radius: 8px; cursor: pointer; white-space: nowrap; font-size: 15px; margin: 0;" onclick="resetCustomSort()" title="回復成預設新增順序">🔄 重置</button>
+            <button id="balance-sort-btn" class="btn-action-alt" style="display:none; padding: 10px 14px; border-radius: 8px; cursor: pointer; white-space: nowrap; font-size: 15px; margin: 0;" onclick="toggleBalanceSort()"></button>
         </div>
+
 
         <div id="cards-container"></div>
     </div>
 
+
     <!-- Tab: 歷史記錄 -->
     <div id="tab-history" class="tab-content">
-        <h3 style="margin-top:0; color:var(--neon-cyan); letter-spacing:1px;">📜 歷史記錄</h3>
+        <h3 style="margin-top:0; color:var(--neon-cyan); letter-spacing:1px; font-size: 20px;">📜 歷史記錄</h3>
         <div class="form-group">
             <select id="history-card-select" class="form-control" onchange="renderHistory()">
                 <option value="all">請先選擇卡片...</option>
@@ -184,10 +194,11 @@
         <div id="history-container"></div>
     </div>
 
+
     <!-- Tab: 系統設定 -->
     <div id="tab-settings" class="tab-content">
         <div class="card-item" style="padding:20px;">
-            <h3 style="margin-top:0; color:var(--neon-cyan);">新增卡片</h3>
+            <h3 style="margin-top:0; color:var(--neon-cyan); font-size: 20px;">新增卡片</h3>
             <div class="form-group"><label>卡片名稱</label><input type="text" id="new-card-name" class="form-control" placeholder="例如：科技通勤卡"></div>
             <div class="form-group">
                 <label>卡片種類</label>
@@ -206,15 +217,17 @@
             <button class="btn-block" onclick="addCard()">新增資料</button>
         </div>
 
+
         <div class="card-item" style="margin-top: 20px; padding:20px;">
-            <h3 style="margin-top:0; color:var(--neon-purple);">系統與備份</h3>
+            <h3 style="margin-top:0; color:var(--neon-purple); font-size: 20px;">系統與備份</h3>
             <button class="btn-block btn-backup" onclick="exportBackup(false)">手動匯出備份檔</button>
             <div class="form-group" style="margin-top: 20px;">
                 <label style="color:var(--neon-purple);">匯入備份檔 (將覆蓋現有資料)</label>
-                <input type="file" id="import-file" class="form-control" accept=".json" onchange="importBackup(event)" style="font-size:14px; padding:8px;">
+                <input type="file" id="import-file" class="form-control" accept=".json" onchange="importBackup(event)" style="font-size:16px; padding:10px;">
             </div>
         </div>
     </div>
+
 
     <!-- Navigation -->
     <div class="bottom-nav">
@@ -222,6 +235,7 @@
         <button class="nav-btn" onclick="switchTab('history', this)"><div class="nav-icon">📊</div><span>歷史記錄</span></button>
         <button class="nav-btn" onclick="switchTab('settings', this)"><div class="nav-icon">⚙️</div><span>系統設定</span></button>
     </div>
+
 
     <!-- Modals -->
     <div class="modal-overlay" id="action-modal">
@@ -236,6 +250,7 @@
         </div>
     </div>
 
+
     <div class="modal-overlay" id="edit-modal">
         <div class="modal">
             <h3>編輯記錄</h3><input type="hidden" id="edit-tx-id">
@@ -249,11 +264,12 @@
         </div>
     </div>
 
+
     <div class="modal-overlay" id="edit-card-modal">
         <div class="modal">
             <h3>編輯卡片資訊</h3><input type="hidden" id="edit-card-id">
             <div class="form-group"><label>卡片名稱</label><input type="text" id="edit-card-name" class="form-control"></div>
-            <div class="form-group"><label>實際餘額 (校正)</label><input type="number" id="edit-card-balance" class="form-control"><p style="font-size:11px; color:var(--text-muted); margin-top:4px;">自動新增「校正」紀錄以平衡帳目</p></div>
+            <div class="form-group"><label>實際餘額 (校正)</label><input type="number" id="edit-card-balance" class="form-control"><p style="font-size:13px; color:var(--text-muted); margin-top:6px;">自動新增「校正」紀錄以平衡帳目</p></div>
             <div class="form-group"><label>卡片種類</label><select id="edit-card-type" class="form-control" onchange="toggleJcbUI('edit-card')"><option value="悠遊卡">悠遊卡</option><option value="一卡通">一卡通</option><option value="愛金卡">愛金卡</option></select></div>
             <div class="form-group" id="edit-card-jcb-group"><label class="checkbox-label"><input type="checkbox" id="edit-card-is-jcb" onchange="toggleJcbUI('edit-card')"> 這是一張 JCB 悠遊卡</label></div>
             <div class="form-group"><label>信用卡號 (選填)</label><input type="text" id="edit-card-credit" class="form-control"></div>
@@ -268,36 +284,39 @@
         </div>
     </div>
 
+
     <script>
         // --- 核心變數與初始化 ---
         const DB_KEY = 'TransitApp_Data';
         let appData = { cards: [], transactions: [], customOrder: [], unsavedCount: 0 };
         let deferredPrompt, currentAction = { cardId: null, type: null };
 
+
         function init() {
             setupPWA();
             loadData();
-            
+           
             // 確保首次開啟為預設排序
             if (!appData.sortPreference) appData.sortPreference = 'default';
             if (!appData.balanceSortDir) appData.balanceSortDir = 'desc'; // 餘額預設高到低
-            
+           
             document.getElementById('card-sort-select').value = appData.sortPreference;
             toggleJcbUI('new-card');
             updateHistorySelect();
             renderCards();
             renderHistory();
-            
+           
             const installBtn = document.getElementById('install-app-btn');
             window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; installBtn.style.display = 'block'; });
             installBtn.addEventListener('click', async () => { if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; }});
             window.addEventListener('appinstalled', () => { deferredPrompt = null; installBtn.style.display = 'none'; });
         }
 
-        const loadData = () => { 
-            const data = localStorage.getItem(DB_KEY); 
+
+        const loadData = () => {
+            const data = localStorage.getItem(DB_KEY);
             if (data) {
-                appData = { ...appData, ...JSON.parse(data) }; 
+                appData = { ...appData, ...JSON.parse(data) };
                 // 舊版排序相容性轉移
                 if (appData.sortPreference === 'balance-desc') { appData.sortPreference = 'balance'; appData.balanceSortDir = 'desc'; }
                 else if (appData.sortPreference === 'balance-asc') { appData.sortPreference = 'balance'; appData.balanceSortDir = 'asc'; }
@@ -306,6 +325,7 @@
         const saveData = () => { localStorage.setItem(DB_KEY, JSON.stringify(appData)); updateHistorySelect(); renderHistory(); };
         const triggerAutoBackup = () => { appData.unsavedCount = (appData.unsavedCount || 0) + 1; saveData(); if (appData.unsavedCount >= 10) exportBackup(true); };
 
+
         // --- 工具函式 ---
         const pad = n => n.toString().padStart(2, '0');
         const formatDate = (dateObj, inputFormat = false) => {
@@ -313,7 +333,7 @@
             return inputFormat ? `${y}-${m}-${dt}T${h}:${mn}` : `${y}/${m}/${dt} ${h}:${mn}`;
         };
         const formatCardNumber = str => str ? String(str).replace(/[\s-]/g, '').replace(/(.{4})(?!$)/g, '$1-') : '無';
-        
+       
         const getTxCount = (cardId, type, checkMonth = false) => {
             const y = new Date().getFullYear(), m = new Date().getMonth();
             return appData.transactions.filter(t => {
@@ -324,9 +344,11 @@
         const getMonthlyTopupCount = id => getTxCount(id, '儲值', true);
         const getYearlyRegCount = id => getTxCount(id, '登錄', false);
 
+
         const addTx = (cardId, type, amount, memo, idSuffix = '', timeOffset = 0) => {
             appData.transactions.push({ id: Date.now() + idSuffix, cardId, timestamp: new Date(Date.now() + timeOffset).toISOString(), type, amount, memo });
         };
+
 
         const syncTxCount = (cardId, type, targetCount, checkMonth, memoPrefix) => {
             if (isNaN(targetCount) || targetCount < 0) return;
@@ -344,12 +366,14 @@
             }
         };
 
+
         function getCustomOrder() {
             appData.customOrder = appData.customOrder || [];
             const existingIds = new Set(appData.customOrder), currentIds = new Set(appData.cards.map(c => c.id));
             appData.cards.forEach(c => { if (!existingIds.has(c.id)) appData.customOrder.push(c.id); });
             return appData.customOrder = appData.customOrder.filter(id => currentIds.has(id));
         }
+
 
         // --- UI 控制 ---
         function toggleJcbUI(prefix) {
@@ -358,10 +382,12 @@
             document.getElementById(`${prefix}-regcount-group`).style.display = (isYoyo && document.getElementById(`${prefix}-is-jcb`).checked) ? 'block' : 'none';
         }
 
+
         function toggleStar(e, id) { e.stopPropagation(); const c = appData.cards.find(c => c.id === id); if (c) { c.isStarred = !c.isStarred; saveData(); renderCards(); triggerAutoBackup(); } }
         function scrollToCard(id) { const el = document.getElementById('card-view-' + id); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.boxShadow = '0 0 20px 5px var(--neon-cyan)'; setTimeout(() => el.style.boxShadow = '', 1500); } }
         function switchTab(id, btn) { document.querySelectorAll('.tab-content, .nav-btn').forEach(el => el.classList.remove('active-tab', 'active')); document.getElementById(`tab-${id}`).classList.add('active-tab'); if(btn) btn.classList.add('active'); if(id === 'cards') window.scrollTo(0,0); }
         function closeModal(id = 'action-modal') { document.getElementById(id).style.display = 'none'; }
+
 
         function resetCustomSort() {
             if (confirm('確定要將自訂排序回復成「預設新增順序」嗎？')) {
@@ -372,7 +398,7 @@
                 triggerAutoBackup();
             }
         }
-        
+       
         function toggleBalanceSort() {
             appData.balanceSortDir = appData.balanceSortDir === 'desc' ? 'asc' : 'desc';
             saveData();
@@ -380,13 +406,14 @@
             triggerAutoBackup();
         }
 
+
         // --- 核心功能 ---
         function addCard() {
             const name = document.getElementById('new-card-name').value.trim(), type = document.getElementById('new-card-type').value;
             if (!name) return alert('請輸入卡片名稱');
             const isJCB = type === '悠遊卡' ? document.getElementById('new-card-is-jcb').checked : false;
             const cardId = Date.now().toString();
-            
+           
             appData.cards.push({
                 id: cardId, type, isJCB, isStarred: false, name,
                 balance: parseInt(document.getElementById('new-card-balance').value) || 0,
@@ -396,12 +423,13 @@
             getCustomOrder();
             syncTxCount(cardId, '登錄', isJCB ? parseInt(document.getElementById('new-card-regcount').value) : 0, false, '建檔初始登錄');
             syncTxCount(cardId, '儲值', parseInt(document.getElementById('new-card-topup-count').value), true, '建檔初始儲值');
-            
+           
             saveData(); renderCards(); triggerAutoBackup();
             ['name', 'credit', 'transit', 'balance', 'topup-count', 'regcount'].forEach(f => document.getElementById(`new-card-${f}`).value = '');
             document.getElementById('new-card-type').value = '悠遊卡'; document.getElementById('new-card-is-jcb').checked = true; toggleJcbUI('new-card');
             switchTab('cards', document.querySelectorAll('.nav-btn')[0]);
         }
+
 
         function openEditCardModal(id) {
             const c = appData.cards.find(c => c.id === id); if (!c) return;
@@ -413,23 +441,26 @@
             toggleJcbUI('edit-card'); document.getElementById('edit-card-modal').style.display = 'flex';
         }
 
+
         function submitEditCard() {
             const id = document.getElementById('edit-card-id').value, c = appData.cards.find(c => c.id === id);
             if (!c || !document.getElementById('edit-card-name').value.trim()) return alert('請輸入卡片名稱');
-            
+           
             c.name = document.getElementById('edit-card-name').value.trim();
             c.type = document.getElementById('edit-card-type').value;
             c.isJCB = c.type === '悠遊卡' ? document.getElementById('edit-card-is-jcb').checked : false;
             c.creditNum = document.getElementById('edit-card-credit').value.trim();
             c.transitNum = document.getElementById('edit-card-transit').value.trim();
 
+
             const newBal = parseInt(document.getElementById('edit-card-balance').value);
             if (!isNaN(newBal) && newBal >= 0 && newBal !== c.balance) { addTx(c.id, '校正', newBal - c.balance, '系統手動校正餘額'); c.balance = newBal; }
             if (c.isJCB) syncTxCount(id, '登錄', parseInt(document.getElementById('edit-card-regcount').value), false, '登錄次數');
             syncTxCount(id, '儲值', parseInt(document.getElementById('edit-card-topup-count').value), true, '本月儲值次數');
-            
+           
             saveData(); renderCards(); triggerAutoBackup(); closeModal('edit-card-modal');
         }
+
 
         function deleteCardFromEdit() {
             const id = document.getElementById('edit-card-id').value, c = appData.cards.find(c => c.id === id);
@@ -439,6 +470,7 @@
             getCustomOrder(); saveData(); renderCards(); triggerAutoBackup(); closeModal('edit-card-modal');
             if(document.getElementById('history-card-select').value === id) { document.getElementById('history-card-select').value = 'all'; renderHistory(); }
         }
+
 
         function openActionModal(id, type) {
             currentAction = { cardId: id, type };
@@ -452,12 +484,14 @@
             }
         }
 
+
         function submitAction() {
             const amt = parseInt(document.getElementById('modal-amount').value);
             if (!amt || amt <= 0) return alert('請輸入有效金額');
             executeAction(currentAction.cardId, currentAction.type, amt, document.getElementById('modal-memo').value.trim());
             closeModal();
         }
+
 
         function executeAction(id, type, amount, memo) {
             const c = appData.cards.find(c => c.id === id); if (!c) return;
@@ -470,6 +504,7 @@
             saveData(); renderCards(); triggerAutoBackup();
         }
 
+
         function openEditModal(id) {
             const t = appData.transactions.find(t => t.id === id); if(!t) return;
             document.getElementById('edit-tx-id').value = t.id;
@@ -480,11 +515,12 @@
             document.getElementById('edit-modal').style.display = 'flex';
         }
 
+
         function submitEdit() {
             const t = appData.transactions.find(t => t.id === document.getElementById('edit-tx-id').value), c = appData.cards.find(c => c.id === t.cardId);
             const amt = parseInt(document.getElementById('edit-amount').value) || 0, dt = document.getElementById('edit-datetime').value;
             if (!dt || (!['登錄', '校正'].includes(t.type) && amt < 0)) return alert('輸入無效');
-            
+           
             if (c) {
                 if (t.type === '扣款') c.balance += t.amount; else if (['儲值', '校正'].includes(t.type)) c.balance -= t.amount;
                 if (t.type === '扣款') {
@@ -496,12 +532,14 @@
             saveData(); renderCards(); triggerAutoBackup(); closeModal('edit-modal');
         }
 
+
         function deleteTransaction(id) {
             const idx = appData.transactions.findIndex(t => t.id === id); if (idx === -1 || !confirm('確定刪除此記錄？(系統將自動回復餘額)')) return;
             const t = appData.transactions[idx], c = appData.cards.find(c => c.id === t.cardId);
             if (c) { if (t.type === '扣款') c.balance += t.amount; else if (['儲值', '校正'].includes(t.type)) c.balance -= t.amount; }
             appData.transactions.splice(idx, 1); saveData(); renderCards(); triggerAutoBackup();
         }
+
 
         // --- 渲染 ---
         function updateHistorySelect() {
@@ -511,28 +549,31 @@
         }
         function viewHistory(id) { document.getElementById('history-card-select').value = id; switchTab('history', document.querySelectorAll('.nav-btn')[1]); renderHistory(); }
 
+
         function renderCards() {
             const backupInfo = document.getElementById('last-backup-info'), cont = document.getElementById('cards-container'), over = document.getElementById('overview-container'), tool = document.getElementById('sort-toolbar');
             backupInfo.innerHTML = appData.lastBackupTime ? `✅ 系統已於 <b>${formatDate(appData.lastBackupTime)}</b> 完成本機備份下載` : '';
             backupInfo.style.display = appData.lastBackupTime ? 'block' : 'none';
-            
-            if (!appData.cards.length) { over.style.display = 'none'; tool.style.display = 'none'; cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top:50px;">無卡片紀錄，請至系統設定建立</p>'; return; }
+           
+            if (!appData.cards.length) { over.style.display = 'none'; tool.style.display = 'none'; cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:16px; margin-top:50px;">無卡片紀錄，請至系統設定建立</p>'; return; }
             over.style.display = 'block'; tool.style.display = 'flex';
 
+
             const sortType = document.getElementById('card-sort-select').value;
-            if (appData.sortPreference !== sortType) { 
-                appData.sortPreference = sortType; 
-                localStorage.setItem(DB_KEY, JSON.stringify(appData)); 
+            if (appData.sortPreference !== sortType) {
+                appData.sortPreference = sortType;
+                localStorage.setItem(DB_KEY, JSON.stringify(appData));
             }
-            
+           
             const resetBtn = document.getElementById('reset-sort-btn');
             if (resetBtn) resetBtn.style.display = sortType === 'custom' ? 'block' : 'none';
-            
+           
             const balBtn = document.getElementById('balance-sort-btn');
             if (balBtn) {
                 balBtn.style.display = sortType === 'balance' ? 'block' : 'none';
                 if (sortType === 'balance') balBtn.innerHTML = appData.balanceSortDir === 'asc' ? '⬆️ 低到高' : '⬇️ 高到低';
             }
+
 
             let sorted = [...appData.cards];
             if (sortType === 'smart') sorted.sort((a,b) => { const rA = (a.type === '悠遊卡' && a.isJCB !== false) ? getYearlyRegCount(a.id) : 999, rB = (b.type === '悠遊卡' && b.isJCB !== false) ? getYearlyRegCount(b.id) : 999; return rA !== rB ? rA - rB : a.balance - b.balance; });
@@ -543,17 +584,20 @@
             else if (sortType === 'type') sorted.sort((a,b) => a.type.localeCompare(b.type));
             else if (sortType === 'custom') { const o = getCustomOrder(); sorted.sort((a,b) => o.indexOf(a.id) - o.indexOf(b.id)); }
 
+
             const currentMonth = new Date().getMonth() + 1;
             const viewData = sorted.map(c => {
                 const isJCB = c.type === '悠遊卡' && c.isJCB !== false;
                 return { ...c, isJCB, topups: getMonthlyTopupCount(c.id), regs: isJCB ? getYearlyRegCount(c.id) : null, cls: c.type === '悠遊卡' ? 'type-easy' : (c.type === '一卡通' ? 'type-ipass' : 'type-icash'), starCls: c.isStarred ? 'active' : '', cred: formatCardNumber(c.creditNum), trans: formatCardNumber(c.transitNum) };
             });
 
-            document.getElementById('overview-table-body').innerHTML = `<tr><th>名稱</th><th style="width:23%;text-align:right;">餘額</th><th style="width:23%;text-align:center;">本月儲值</th><th style="width:23%;text-align:center;">登錄次數</th></tr>` + 
+
+            document.getElementById('overview-table-body').innerHTML = `<tr><th>名稱</th><th style="width:23%;text-align:right;">餘額</th><th style="width:23%;text-align:center;">本月儲值</th><th style="width:23%;text-align:center;">登錄次數</th></tr>` +
                 viewData.map(v => `<tr class="clickable-row sortable-row" data-id="${v.id}" draggable="true" onclick="if(!window.isDragging) scrollToCard('${v.id}')">
-                    <td style="white-space:nowrap;"><span class="drag-handle">☰</span><span class="star-btn ${v.starCls}" onclick="toggleStar(event, '${v.id}')">${v.isStarred ? '★' : '☆'}</span><span class="card-type ${v.cls}" style="font-size:10px; padding:2px 5px; vertical-align:middle; display:inline-block;">${v.type}</span> <span style="vertical-align:middle;">${v.name}</span></td>
+                    <td style="white-space:nowrap;"><span class="drag-handle">☰</span><span class="star-btn ${v.starCls}" onclick="toggleStar(event, '${v.id}')">${v.isStarred ? '★' : '☆'}</span><span class="card-type ${v.cls}" style="font-size:12px; padding:3px 6px; vertical-align:middle; display:inline-block;">${v.type}</span> <span style="vertical-align:middle;">${v.name}</span></td>
                     <td class="val-num" style="text-align:right; vertical-align:middle;">$${v.balance.toLocaleString()}</td><td class="val-num" style="text-align:center; vertical-align:middle;">${v.topups}</td>
                     <td class="val-num" style="text-align:center; color:var(--neon-purple); vertical-align:middle;">${v.regs !== null ? v.regs : '<span style="color:var(--text-muted);">-</span>'}</td></tr>`).join('');
+
 
             document.querySelectorAll('.sortable-row').forEach(row => {
                 row.addEventListener('dragstart', e => { window.isDragging = true; row.classList.add('dragging'); e.dataTransfer.setData('text/plain', row.dataset.id); });
@@ -563,9 +607,10 @@
                 row.addEventListener('drop', e => { e.preventDefault(); row.style.borderTop = ''; row.style.borderBottom = ''; const drg = document.querySelector('.dragging'); if (!drg || drg === row) return; const rect = row.getBoundingClientRect(); if(e.clientY - rect.y - rect.height/2 > 0) row.after(drg); else row.before(drg); appData.customOrder = Array.from(document.querySelectorAll('.sortable-row')).map(r => r.dataset.id); document.getElementById('card-sort-select').value = 'custom'; saveData(); renderCards(); triggerAutoBackup(); });
             });
 
+
             cont.innerHTML = viewData.map(v => `
                 <div class="card-item" id="card-view-${v.id}">
-                    <div class="card-top-row"><div style="display:flex; align-items:center; gap:8px;"><div class="card-type ${v.cls}">${v.type}</div><div class="card-title" style="display:flex; align-items:center; gap:6px;">${v.name}<button class="btn-gear" style="font-size:14px; padding:0;" onclick="viewHistory('${v.id}')">📜</button></div></div><div style="display:flex; align-items:center; gap:10px;"><div class="card-balance-compact">$${v.balance.toLocaleString()}</div><button class="btn-gear" onclick="openEditCardModal('${v.id}')">⚙️</button></div></div>
+                    <div class="card-top-row"><div style="display:flex; align-items:center; gap:10px;"><div class="card-type ${v.cls}">${v.type}</div><div class="card-title" style="display:flex; align-items:center; gap:8px;">${v.name}<button class="btn-gear" style="font-size:18px; padding:0;" onclick="viewHistory('${v.id}')">📜</button></div></div><div style="display:flex; align-items:center; gap:12px;"><div class="card-balance-compact">$${v.balance.toLocaleString()}</div><button class="btn-gear" onclick="openEditCardModal('${v.id}')">⚙️</button></div></div>
                     <div class="card-numbers"><div>💳 信: <span>${v.cred}</span></div><div>🎫 票: <span>${v.trans}</span></div></div>
                     <div class="card-info">${v.topups > 0 ? `<div style="color:var(--neon-green); font-weight:bold; text-shadow:0 0 5px rgba(1,255,195,0.4);">⚡ ${currentMonth}月已儲值</div>` : `<div style="color:var(--text-muted);">無最新儲值</div>`} ${v.isJCB ? `<div style="border-left:1px solid rgba(255,255,255,0.1); padding-left:10px;">登錄: <b style="color:var(--neon-purple);">${v.regs}</b> 次</div>` : ''}</div>
                     <div class="card-actions-compact" ${v.isJCB ? '' : 'style="justify-content:center;"'}>
@@ -575,20 +620,23 @@
                 </div>`).join('');
         }
 
+
         function renderHistory() {
             const cont = document.getElementById('history-container'), selId = document.getElementById('history-card-select').value;
             let list = selId && selId !== 'all' ? appData.transactions.filter(t => t.cardId === selId) : null;
-            if (!list) { cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top:30px;">請從上方選單選擇目標卡片</p>'; return; }
-            if (!list.length) { cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top:30px;">查無資料</p>'; return; }
+            if (!list) { cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:16px; margin-top:30px;">請從上方選單選擇目標卡片</p>'; return; }
+            if (!list.length) { cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:16px; margin-top:30px;">查無資料</p>'; return; }
+
 
             cont.innerHTML = list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map(t => {
                 const isD = t.type === '扣款', isT = t.type === '儲值', isC = t.type === '校正';
                 const cls = isD ? 'hist-deduct' : (isT ? 'hist-topup' : (isC ? 'hist-calib' : 'hist-reg'));
                 const amtCls = isD ? 'amt-deduct' : (isT ? 'amt-topup' : (isC ? 'amt-calib' : 'amt-reg'));
                 const amtStr = isD ? `- $${t.amount.toLocaleString()}` : (isT ? `+ $${t.amount.toLocaleString()}` : (isC ? `${t.amount>0?'+':'-'} $${Math.abs(t.amount).toLocaleString()}` : '[ 系統紀錄 ]'));
-                return `<div class="history-item ${cls}"><div class="history-left"><div class="history-time">${formatDate(t.timestamp)}</div><div class="history-desc">${t.type}${t.memo ? `<br><span style="font-size:13px; color:var(--text-muted); font-weight:normal;">📝 ${t.memo}</span>` : ''}</div></div><div class="history-right"><span class="history-amount ${amtCls}" ${!isD&&!isT&&!isC ? 'style="font-size:14px;"' : ''}>${amtStr}</span><div><button class="btn-edit-hist" onclick="openEditModal('${t.id}')">編輯</button><button class="btn-delete-hist" onclick="deleteTransaction('${t.id}')">刪除</button></div></div></div>`;
+                return `<div class="history-item ${cls}"><div class="history-left"><div class="history-time">${formatDate(t.timestamp)}</div><div class="history-desc">${t.type}${t.memo ? `<br><span style="font-size:15px; color:var(--text-muted); font-weight:normal;">📝 ${t.memo}</span>` : ''}</div></div><div class="history-right"><span class="history-amount ${amtCls}" ${!isD&&!isT&&!isC ? 'style="font-size:16px;"' : ''}>${amtStr}</span><div><button class="btn-edit-hist" onclick="openEditModal('${t.id}')">編輯</button><button class="btn-delete-hist" onclick="deleteTransaction('${t.id}')">刪除</button></div></div></div>`;
             }).join('');
         }
+
 
         function exportBackup(isAuto) {
             appData.unsavedCount = 0; appData.lastBackupTime = new Date().toISOString(); saveData();
@@ -598,11 +646,13 @@
             if(!isAuto) alert('備份檔下載程序已啟動！');
         }
 
+
         function importBackup(e) {
             const f = e.target.files[0]; if (!f) return; const r = new FileReader();
             r.onload = ev => { try { const d = JSON.parse(ev.target.result); if (d.cards && d.transactions) { appData = { ...appData, ...d }; saveData(); alert('還原成功！'); switchTab('cards', document.querySelectorAll('.nav-btn')[0]); } else throw new Error('格式錯誤'); } catch (err) { alert('失敗：' + err.message); } e.target.value = ''; };
             r.readAsText(f);
         }
+
 
         function setupPWA() {
             let iconUrl = "icon.png";
@@ -615,13 +665,17 @@
             } catch (e) {
                 iconUrl = "icon.png";
             }
-            
+           
             const m = { name: "電子票證管家", short_name: "電子票證管家", display: "standalone", background_color: "#0b0f19", theme_color: "#0b0f19", icons: [{ src: iconUrl, sizes: "192x192 512x512", type: "image/png", purpose: "any maskable" }, { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%2305d9e8'/%3E%3Ctext x='50' y='65' font-size='50' font-weight='bold' font-family='sans-serif' text-anchor='middle' fill='%230b0f19'%3E卡%3C/text%3E%3C/svg%3E", sizes: "512x512", type: "image/svg+xml" }], start_url: window.location.href };
             const l = document.createElement('link'); l.rel = 'manifest'; l.href = URL.createObjectURL(new Blob([JSON.stringify(m)], {type: 'application/json'})); document.head.appendChild(l);
             if ('serviceWorker' in navigator) navigator.serviceWorker.register(URL.createObjectURL(new Blob([`self.addEventListener('fetch', e => e.respondWith(fetch(e.request).then(r => caches.open('transit-pwa').then(c => { c.put(e.request, r.clone()); return r; })).catch(() => caches.match(e.request))));`], {type: 'application/javascript'}))).catch(console.log);
         }
 
+
         window.onload = init;
     </script>
 </body>
 </html>
+
+
+
