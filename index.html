@@ -60,13 +60,13 @@
         /* Cards */
         .card-item {
             background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 12px;
-            padding: 15px 18px; margin-bottom: 18px; box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.3); position: relative; overflow: hidden; transition: box-shadow 0.4s ease-out;
+            padding: 15px 12px; margin-bottom: 18px; box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.3); position: relative; overflow: hidden; transition: box-shadow 0.4s ease-out; /* 調整左右 Padding 爭取空間 */
         }
         .card-item::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple)); }
        
         .card-top-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px; }
-        .card-title { font-size: 18px; font-weight: bold; letter-spacing: 1px; color: #fff;} /* 16 -> 18 */
-        .card-type { font-size: 13px; padding: 4px 10px; border-radius: 12px; color: #fff; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5);} /* 11 -> 13 */
+        .card-title { font-size: 18px; font-weight: bold; color: #fff; white-space: nowrap; } /* 移除 letter-spacing 節省空間，強制不換行 */
+        .card-type { font-size: 13px; padding: 4px 6px; border-radius: 8px; color: #fff; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5); white-space: nowrap; } /* 縮減 padding 節省空間 */
         .type-easy { background: linear-gradient(135deg, #0088A8, var(--neon-cyan)); }
         .type-ipass { background: linear-gradient(135deg, #F39800, var(--neon-orange)); }
         .type-icash { background: linear-gradient(135deg, #E60012, var(--neon-pink)); }
@@ -77,7 +77,7 @@
 
         .card-numbers { font-size: 13px; color: var(--text-muted); background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; font-family: 'Orbitron', 'Noto Sans TC', sans-serif; display: flex; justify-content: space-between; gap: 5px; } /* 11 -> 13 */
         .card-numbers span { color: var(--text-main); font-weight: bold; }
-        .card-balance-compact { font-family: 'Orbitron', sans-serif; font-size: 30px; font-weight: bold; text-align: right; color: #fff; text-shadow: 0 0 10px rgba(5,217,232,0.5);} /* 26 -> 30 */
+        .card-balance-compact { font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: bold; text-align: right; color: #fff; text-shadow: 0 0 10px rgba(5,217,232,0.5); letter-spacing: -1px; white-space: nowrap; } /* 稍微收緊數字字距與大小以防換行 */
         .card-info { font-size: 14px; color: var(--text-main); text-align: center; margin-bottom: 14px; min-height: 18px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px; display:flex; justify-content: space-around; align-items:center;} /* 12 -> 14 */
        
         /* Actions */
@@ -642,7 +642,7 @@
 
             cont.innerHTML = viewData.map(v => `
                 <div class="card-item" id="card-view-${v.id}">
-                    <div class="card-top-row"><div style="display:flex; align-items:center; gap:8px; flex:1; margin-right:5px;"><div class="card-type ${v.cls}" style="flex-shrink:0;">${v.type}</div><div class="card-title" style="display:flex; align-items:center; gap:6px; flex:1;"><span>${v.name}</span><button class="btn-gear" style="font-size:18px; padding:0; flex-shrink:0;" onclick="viewHistory('${v.id}')">📜</button></div></div><div style="display:flex; align-items:center; gap:10px; flex-shrink:0;"><div class="card-balance-compact">$${v.balance.toLocaleString()}</div><button class="btn-gear" style="flex-shrink:0;" onclick="openEditCardModal('${v.id}')">⚙️</button></div></div>
+                    <div class="card-top-row"><div style="display:flex; align-items:center; gap:4px; flex:1; margin-right:4px;"><div class="card-type ${v.cls}" style="flex-shrink:0;">${v.type}</div><div class="card-title" style="display:flex; align-items:center; gap:4px; flex:1;"><span style="white-space:nowrap;">${v.name}</span><button class="btn-gear" style="font-size:18px; padding:0; flex-shrink:0;" onclick="viewHistory('${v.id}')">📜</button></div></div><div style="display:flex; align-items:center; gap:6px; flex-shrink:0;"><div class="card-balance-compact">$${v.balance.toLocaleString()}</div><button class="btn-gear" style="flex-shrink:0;" onclick="openEditCardModal('${v.id}')">⚙️</button></div></div>
                     <div class="card-numbers"><div>💳 信: <span>${v.cred}</span></div><div>🎫 票: <span>${v.trans}</span></div></div>
                     <div class="card-info">${v.topups > 0 ? `<div style="color:var(--neon-green); font-weight:bold; text-shadow:0 0 5px rgba(1,255,195,0.4);">⚡ ${currentMonth}月已儲值</div>` : `<div style="color:var(--text-muted);">無最新儲值</div>`} ${v.isJCB ? `<div style="border-left:1px solid rgba(255,255,255,0.1); padding-left:10px;">登錄: <b style="color:var(--neon-purple);">${v.regs}</b> 次</div>` : ''}</div>
                     <div class="card-actions-compact" ${v.isJCB ? '' : 'style="justify-content:center;"'}>
