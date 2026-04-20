@@ -97,7 +97,18 @@
         .clickable-row { cursor: pointer; transition: 0.2s ease; }
         .clickable-row:hover { background: rgba(255,255,255,0.08); border-radius: 4px; }
         .sortable-row.dragging { background: rgba(5, 217, 232, 0.15) !important; opacity: 0.7; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .drag-handle { cursor: grab; margin-right: 6px; color: var(--text-muted); font-size: 18px; transition: color 0.2s; } 
+        
+        /* 拖曳把手最佳化 */
+        .drag-handle { 
+            cursor: grab; 
+            margin-right: 6px; 
+            color: var(--text-muted); 
+            font-size: 18px; 
+            transition: color 0.2s; 
+            touch-action: none; /* 關鍵：防止手機螢幕跟著滾動 */
+            padding: 8px 4px; /* 增加觸控熱區 */
+            display: inline-block;
+        } 
         .drag-handle:hover { color: var(--neon-cyan); }
         .sortable-row:active .drag-handle { cursor: grabbing; }
 
@@ -301,7 +312,7 @@
         const DB_KEY = 'TransitApp_Data';
         let appData = { cards: [], transactions: [], customOrder: [], unsavedCount: 0, isOverviewCollapsed: false };
         let deferredPrompt, currentAction = { cardId: null, type: null };
-        let allowAppExit = false; // 控制是否允許原生返回鍵離開APP
+        let allowAppExit = false; 
 
         function init() {
             setupPWA();
@@ -327,13 +338,10 @@
 
         // --- 返回鍵攔截邏輯 ---
         window.addEventListener('popstate', function(e) {
-            // 如果已經允許離開，就放行原生返回
             if (allowAppExit) return;
+            history.pushState('app-trap', '', ''); // 補回攔截狀態
 
-            // 立即補回一筆歷史紀錄，把使用者「困」在 APP 內
-            history.pushState('app-trap', '', '');
-
-            // 1. 檢查是否有開啟的 Modal 視窗（由上而下關閉）
+            // 1. 檢查 Modal
             const modals = ['exit-modal', 'message-modal', 'action-modal', 'edit-modal', 'edit-card-modal'];
             let didCloseModal = false;
             for (let id of modals) {
@@ -341,33 +349,31 @@
                 if (el && el.style.display === 'flex') {
                     closeModal(id);
                     didCloseModal = true;
-                    break; // 每次按返回只關閉最上層的一個視窗
+                    break;
                 }
             }
             if (didCloseModal) return;
 
-            // 2. 檢查是否在主分頁 (我的卡片)，若不是則切換回主分頁
+            // 2. 檢查分頁
             const cardsTab = document.getElementById('tab-cards');
             if (!cardsTab.classList.contains('active-tab')) {
                 switchTab('cards', document.querySelectorAll('.nav-btn')[0]);
                 return;
             }
 
-            // 3. 檢查畫面是否向下滑動了 (超過 50px)。若是，則平滑捲動回最上方（卡片總覽區）
+            // 3. 檢查捲動位置
             if (window.scrollY > 50) {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
                 return;
             }
 
-            // 4. 如果在主分頁、無開啟視窗、且畫面已經在最上方，顯示「離開 APP」確認視窗
+            // 4. 顯示離開確認
             document.getElementById('exit-modal').style.display = 'flex';
         });
 
-        // 確認離開應用程式
         function confirmExitApp() {
             allowAppExit = true; 
             closeModal('exit-modal');
-            // 退回兩步歷史以跳出目前的 Trap 狀態並離開 PWA 應用程式
             history.go(-2);
         }
 
@@ -462,8 +468,8 @@
 
         function resetCustomSort() {
             if (confirm('確定要將自訂排序回復成「預設新增順序」嗎？')) {
-                appData.customOrder = []; // 清空自訂順序
-                getCustomOrder(); // 重新依照新增順序生成
+                appData.customOrder = []; 
+                getCustomOrder(); 
                 saveData();
                 renderCards();
                 triggerAutoBackup();
@@ -665,12 +671,65 @@
                     <td class="val-num" style="text-align:right; vertical-align:middle;">$${v.balance.toLocaleString()}</td><td class="val-num" style="text-align:center; vertical-align:middle;">${v.topups}</td>
                     <td class="val-num" style="text-align:center; color:var(--neon-purple); vertical-align:middle;">${v.regs !== null ? v.regs : '<span style="color:var(--text-muted);">-</span>'}</td></tr>`).join('');
 
+            // === 拖曳排序邏輯 (包含桌面版與手機觸控版) ===
             document.querySelectorAll('.sortable-row').forEach(row => {
+                // 1. 桌面版 HTML5 Drag & Drop
                 row.addEventListener('dragstart', e => { window.isDragging = true; row.classList.add('dragging'); e.dataTransfer.setData('text/plain', row.dataset.id); });
                 row.addEventListener('dragend', () => { row.classList.remove('dragging'); setTimeout(() => window.isDragging = false, 100); });
                 row.addEventListener('dragover', e => { e.preventDefault(); const drg = document.querySelector('.dragging'); if (!drg || drg === row) return; const rect = row.getBoundingClientRect(); row.style.borderTop = (e.clientY - rect.y - rect.height/2 < 0) ? '2px solid var(--neon-cyan)' : ''; row.style.borderBottom = (e.clientY - rect.y - rect.height/2 > 0) ? '2px solid var(--neon-cyan)' : ''; });
                 row.addEventListener('dragleave', () => { row.style.borderTop = ''; row.style.borderBottom = ''; });
                 row.addEventListener('drop', e => { e.preventDefault(); row.style.borderTop = ''; row.style.borderBottom = ''; const drg = document.querySelector('.dragging'); if (!drg || drg === row) return; const rect = row.getBoundingClientRect(); if(e.clientY - rect.y - rect.height/2 > 0) row.after(drg); else row.before(drg); appData.customOrder = Array.from(document.querySelectorAll('.sortable-row')).map(r => r.dataset.id); document.getElementById('card-sort-select').value = 'custom'; saveData(); renderCards(); triggerAutoBackup(); });
+
+                // 2. 手機版 Touch 觸控拖曳 (綁定在 drag-handle 把手上)
+                const handle = row.querySelector('.drag-handle');
+                
+                handle.addEventListener('touchstart', e => {
+                    e.preventDefault(); // 防止長按跳出選單或畫面滾動
+                    window.isDragging = true;
+                    row.classList.add('dragging');
+                }, {passive: false});
+
+                handle.addEventListener('touchmove', e => {
+                    if (!row.classList.contains('dragging')) return;
+                    e.preventDefault();
+                    
+                    const touch = e.touches[0];
+                    // 找出手指目前滑動到哪個元素上方
+                    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+                    if (!target) return;
+                    
+                    const targetRow = target.closest('.sortable-row');
+                    
+                    if (targetRow && targetRow !== row) {
+                        const rect = targetRow.getBoundingClientRect();
+                        const mid = rect.y + rect.height / 2;
+                        // 判斷要插在目標的上方還是下方
+                        if (touch.clientY > mid) {
+                            targetRow.after(row);
+                        } else {
+                            targetRow.before(row);
+                        }
+                    }
+                }, {passive: false});
+
+                handle.addEventListener('touchend', e => {
+                    if (!row.classList.contains('dragging')) return;
+                    row.classList.remove('dragging');
+                    setTimeout(() => window.isDragging = false, 100); // 延遲解除鎖定，避免誤觸發點擊
+
+                    // 儲存新順序
+                    appData.customOrder = Array.from(document.querySelectorAll('.sortable-row')).map(r => r.dataset.id);
+                    document.getElementById('card-sort-select').value = 'custom';
+                    saveData();
+                    renderCards();
+                    triggerAutoBackup();
+                });
+                
+                // 防止拖曳意外被系統中斷卡死
+                handle.addEventListener('touchcancel', e => {
+                    row.classList.remove('dragging');
+                    window.isDragging = false;
+                });
             });
 
             cont.innerHTML = viewData.map(v => `
