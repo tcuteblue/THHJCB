@@ -353,7 +353,13 @@
                 return;
             }
 
-            // 3. 如果在主分頁且無開啟視窗，顯示「離開 APP」確認視窗
+            // 3. 檢查畫面是否向下滑動了 (超過 50px)。若是，則平滑捲動回最上方（卡片總覽區）
+            if (window.scrollY > 50) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+
+            // 4. 如果在主分頁、無開啟視窗、且畫面已經在最上方，顯示「離開 APP」確認視窗
             document.getElementById('exit-modal').style.display = 'flex';
         });
 
