@@ -327,8 +327,18 @@
         </div>
     </div>
 
+    <!-- 啟動提醒視窗 -->
+    <div class="modal-overlay" id="startup-reminder-modal" style="z-index: 50;">
+        <div class="modal" style="text-align: center; max-width: 320px; border-color: var(--neon-orange); box-shadow: 0 0 30px rgba(255,179,15,0.2);">
+            <h3 style="color: var(--neon-orange); font-size: 20px; border: none; margin-bottom: 10px;">💡 儲值提醒</h3>
+            <p style="font-size: 15px; margin-bottom: 15px; color: var(--text-main);">以下卡片本月已登錄，但尚未有儲值紀錄，請記得完成儲值以獲取回饋：</p>
+            <div id="startup-reminder-list" style="max-height: 200px; overflow-y: auto; margin-bottom: 20px;"></div>
+            <button class="btn-block" style="margin-bottom:0; background: linear-gradient(135deg, #F39800, var(--neon-orange)); color: #fff; box-shadow: 0 4px 15px rgba(255,179,15,0.3);" onclick="closeModal('startup-reminder-modal')">我知道了</button>
+        </div>
+    </div>
+
     <!-- 離開程式確認視窗 -->
-    <div class="modal-overlay" id="exit-modal" style="z-index: 40;">
+    <div class="modal-overlay" id="exit-modal" style="z-index: 60;">
         <div class="modal" style="text-align: center; max-width: 300px; border-color: var(--neon-pink); box-shadow: 0 0 30px rgba(255,42,109,0.2);">
             <h3 style="color: var(--neon-pink); font-size: 20px; border: none; margin-bottom: 5px;">離開應用程式</h3>
             <p style="font-size: 16px; margin-bottom: 25px; color: var(--text-main);">確定要離開電子票證管家嗎？</p>
@@ -365,6 +375,9 @@
             window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; installBtn.style.display = 'block'; });
             installBtn.addEventListener('click', async () => { if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; }});
             window.addEventListener('appinstalled', () => { deferredPrompt = null; installBtn.style.display = 'none'; });
+
+            // 啟動時檢查是否需要跳出儲值提醒
+            checkRemindersOnStartup();
         }
 
         // --- 返回鍵攔截邏輯 ---
@@ -373,7 +386,7 @@
             history.pushState('app-trap', '', ''); 
 
             // 1. 檢查是否有彈出視窗
-            const modals = ['exit-modal', 'message-modal', 'action-modal', 'edit-modal', 'edit-card-modal'];
+            const modals = ['startup-reminder-modal', 'exit-modal', 'message-modal', 'action-modal', 'edit-modal', 'edit-card-modal'];
             let didCloseModal = false;
             for (let id of modals) {
                 let el = document.getElementById(id);
@@ -528,6 +541,42 @@
         }
 
         // --- 核心功能 ---
+        function checkRemindersOnStartup() {
+            // 利用 sessionStorage 讓每次開啟 App 的 session 只彈出一次，避免操作中途重整網頁一直被打擾
+            if (sessionStorage.getItem('startupReminderShown')) return; 
+            
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonthKey = `${currentYear}-${now.getMonth()}`;
+            let reminderCards = [];
+
+            appData.cards.forEach(c => {
+                const effectiveInitTopups = (c.initTopupsMonth === currentMonthKey) ? (c.initTopups || 0) : 0;
+                const realThisMonthTopups = getTxCount(c.id, '儲值', true);
+                const realThisMonthRegs = getTxCount(c.id, '登錄', true);
+                
+                const displayTopups = effectiveInitTopups + realThisMonthTopups;
+                // 只有「本月真實有登錄」且「尚未有儲值紀錄」才需要提醒
+                const needsTopup = realThisMonthRegs > 0 && displayTopups === 0;
+
+                if (needsTopup) {
+                    reminderCards.push(c);
+                }
+            });
+
+            if (reminderCards.length > 0) {
+                const listHtml = reminderCards.map(c => `
+                    <div style="background:rgba(255,179,15,0.15); border:1px solid rgba(255,179,15,0.3); border-left:4px solid var(--neon-orange); padding:10px 14px; margin-bottom:10px; border-radius:6px; text-align:left; color:#fff; font-weight:bold; letter-spacing: 1px;">
+                        💳 ${c.name}
+                    </div>
+                `).join('');
+                
+                document.getElementById('startup-reminder-list').innerHTML = listHtml;
+                document.getElementById('startup-reminder-modal').style.display = 'flex';
+                sessionStorage.setItem('startupReminderShown', 'true');
+            }
+        }
+
         function addCard() {
             const name = document.getElementById('new-card-name').value.trim(), type = document.getElementById('new-card-type').value;
             if (!name) return alert('請輸入卡片名稱');
