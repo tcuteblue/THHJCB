@@ -161,7 +161,17 @@
         .banner-urgent { text-align:center; font-size:13px; font-weight:bold; color:var(--neon-pink); background:rgba(255,42,109,0.15); padding:8px; border-radius:6px; margin-bottom:10px; border:1px dashed var(--neon-pink); animation: alertPulse 1.5s infinite; }
         .card-warning { border-color: var(--neon-orange) !important; box-shadow: 0 0 15px rgba(255,179,15,0.2) !important; }
         .card-urgent { border-color: var(--neon-pink) !important; box-shadow: 0 0 15px rgba(255,42,109,0.3) !important; }
-        @keyframes alertPulse { 0% { opacity: 1; } 50% { opacity: 0.8; box-shadow: 0 0 10px rgba(255,42,109,0.6); } 100% { opacity: 1; } }
+        
+        /* 總覽表格特殊狀態 */
+        .table-warning { background-color: rgba(255,179,15,0.15); border-left: 2px solid var(--neon-orange); }
+        .table-urgent { border-left: 2px solid var(--neon-pink); animation: tablePulse 1.5s infinite; }
+
+        @keyframes alertPulse { 0% { opacity: 1; } 50% { opacity: 0.6; text-shadow: 0 0 10px rgba(255,42,109,0.8); } 100% { opacity: 1; } }
+        @keyframes tablePulse { 
+            0% { background-color: rgba(255,42,109,0.15); } 
+            50% { background-color: rgba(255,42,109,0.3); } 
+            100% { background-color: rgba(255,42,109,0.15); } 
+        }
     </style>
 </head>
 <body>
@@ -769,10 +779,15 @@
             });
 
             document.getElementById('overview-table-body').innerHTML = `<tr><th>名稱</th><th style="width:23%;text-align:right;">餘額</th><th style="width:23%;text-align:center;">本月儲值</th><th style="width:23%;text-align:center;">本年登錄</th></tr>` + 
-                viewData.map(v => `<tr class="clickable-row sortable-row" data-id="${v.id}" draggable="true" onclick="if(!window.isDragging) scrollToCard('${v.id}')">
-                    <td style="white-space:nowrap;"><span class="drag-handle">☰</span><span class="star-btn ${v.starCls}" onclick="toggleStar(event, '${v.id}')">${v.isStarred ? '★' : '☆'}</span><span class="card-type ${v.cls}" style="font-size:12px; padding:3px 6px; vertical-align:middle; display:inline-block;">${v.type}</span> <span style="vertical-align:middle;" title="${v.name}">${v.displayName}</span></td>
+                viewData.map(v => {
+                    const rowSpecialCls = v.isUrgent ? 'table-urgent' : (v.needsTopup ? 'table-warning' : '');
+                    const warningIcon = v.isUrgent ? ' <span title="月底將至！請盡速儲值" style="font-size:14px; display:inline-block; animation: alertPulse 1.5s infinite;">⚠️</span>' : (v.needsTopup ? ' <span title="本月已登錄，請記得儲值" style="font-size:14px;">💡</span>' : '');
+
+                    return `<tr class="clickable-row sortable-row ${rowSpecialCls}" data-id="${v.id}" draggable="true" onclick="if(!window.isDragging) scrollToCard('${v.id}')">
+                    <td style="white-space:nowrap;"><span class="drag-handle">☰</span><span class="star-btn ${v.starCls}" onclick="toggleStar(event, '${v.id}')">${v.isStarred ? '★' : '☆'}</span><span class="card-type ${v.cls}" style="font-size:12px; padding:3px 6px; vertical-align:middle; display:inline-block;">${v.type}</span> <span style="vertical-align:middle;" title="${v.name}">${v.displayName}${warningIcon}</span></td>
                     <td class="val-num" style="text-align:right; vertical-align:middle;">$${v.balance.toLocaleString()}</td><td class="val-num" style="text-align:center; vertical-align:middle;">${v.displayTopups}</td>
-                    <td class="val-num" style="text-align:center; color:var(--neon-purple); vertical-align:middle;">${v.displayRegs !== null ? v.displayRegs : '<span style="color:var(--text-muted);">-</span>'}</td></tr>`).join('');
+                    <td class="val-num" style="text-align:center; color:var(--neon-purple); vertical-align:middle;">${v.displayRegs !== null ? v.displayRegs : '<span style="color:var(--text-muted);">-</span>'}</td></tr>`;
+                }).join('');
 
             // 拖曳排序事件綁定
             document.querySelectorAll('.sortable-row').forEach(row => {
