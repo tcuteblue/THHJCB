@@ -155,6 +155,13 @@
         .stats-month-group { margin-bottom: 20px; animation: fadeIn 0.3s ease; }
         .stats-month-title { color: var(--text-main); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 10px; display:flex; justify-content:space-between; font-weight:bold; }
         .stats-item { background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); padding: 12px 15px; border-radius: 8px; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center; }
+        
+        /* 提示狀態樣式 */
+        .banner-warning { text-align:center; font-size:13px; font-weight:bold; color:var(--neon-orange); background:rgba(255,179,15,0.15); padding:8px; border-radius:6px; margin-bottom:10px; border:1px dashed var(--neon-orange); }
+        .banner-urgent { text-align:center; font-size:13px; font-weight:bold; color:var(--neon-pink); background:rgba(255,42,109,0.15); padding:8px; border-radius:6px; margin-bottom:10px; border:1px dashed var(--neon-pink); animation: alertPulse 1.5s infinite; }
+        .card-warning { border-color: var(--neon-orange) !important; box-shadow: 0 0 15px rgba(255,179,15,0.2) !important; }
+        .card-urgent { border-color: var(--neon-pink) !important; box-shadow: 0 0 15px rgba(255,42,109,0.3) !important; }
+        @keyframes alertPulse { 0% { opacity: 1; } 50% { opacity: 0.8; box-shadow: 0 0 10px rgba(255,42,109,0.6); } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -220,12 +227,12 @@
             <div class="form-group"><label>初始餘額</label><input type="number" id="new-card-balance" class="form-control" placeholder="0"></div>
             
             <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 22px; border-left: 3px solid var(--neon-purple);">
-                <p style="font-size: 13px; color: var(--text-muted); margin-top: 0; margin-bottom: 10px;">👇 此處輸入建檔「之前」的歷史次數，只用於總次數統計，**不會**影響本月的限制判斷。</p>
+                <p style="font-size: 13px; color: var(--text-muted); margin-top: 0; margin-bottom: 10px;">👇 此處可補登建檔前的次數，系統會在「跨月/跨年」時自動將這些次數歸零重新計算。</p>
                 <div class="form-group" id="new-card-regcount-group" style="margin-bottom: 12px;">
-                    <label>已登錄次數 (建檔前)</label><input type="number" id="new-card-regcount" class="form-control" placeholder="0" min="0">
+                    <label>本年度已登錄次數 (建檔前)</label><input type="number" id="new-card-regcount" class="form-control" placeholder="0" min="0">
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label>已儲值次數 (建檔前)</label><input type="number" id="new-card-topup-count" class="form-control" placeholder="0" min="0">
+                    <label>本月已儲值次數 (建檔前)</label><input type="number" id="new-card-topup-count" class="form-control" placeholder="0" min="0">
                 </div>
             </div>
             <button class="btn-block" onclick="addCard()">新增資料</button>
@@ -286,10 +293,10 @@
             
             <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 22px; border-left: 3px solid var(--neon-purple);">
                 <div class="form-group" id="edit-card-regcount-group" style="margin-bottom: 12px;">
-                    <label>已登錄次數 (建檔前)</label><input type="number" id="edit-card-regcount" class="form-control" min="0">
+                    <label>本年度已登錄次數 (建檔前)</label><input type="number" id="edit-card-regcount" class="form-control" min="0">
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label>已儲值次數 (建檔前)</label><input type="number" id="edit-card-topup-count" class="form-control" min="0">
+                    <label>本月已儲值次數 (建檔前)</label><input type="number" id="edit-card-topup-count" class="form-control" min="0">
                 </div>
             </div>
             
@@ -355,7 +362,7 @@
             if (allowAppExit) return;
             history.pushState('app-trap', '', ''); 
 
-            // 檢查彈出視窗
+            // 1. 檢查是否有彈出視窗
             const modals = ['exit-modal', 'message-modal', 'action-modal', 'edit-modal', 'edit-card-modal'];
             let didCloseModal = false;
             for (let id of modals) {
@@ -368,32 +375,34 @@
             }
             if (didCloseModal) return;
 
-            // 檢查是否在「我的卡片」以外的分頁
+            // 2. 檢查是否在「我的卡片」以外的分頁
             const cardsTab = document.getElementById('tab-cards');
             if (!cardsTab.classList.contains('active-tab')) {
                 const historyTab = document.getElementById('tab-history');
                 if (historyTab.classList.contains('active-tab')) {
                     const selId = document.getElementById('history-card-select').value;
-                    // 如果在歷史記錄(Layer 3) 且正在看某張特定的卡，就退回那張卡的位置(Layer 2)
+                    // Layer 3 (歷史記錄) -> Layer 2 (退回專屬卡片的位置)
                     if (selId && selId !== 'all' && !selId.startsWith('stats-')) {
                         switchTab('cards', document.querySelectorAll('.nav-btn')[0], true); // true: 避免馬上捲到頂部
-                        setTimeout(() => scrollToCard(selId), 50); // 平滑捲動回卡片
+                        setTimeout(() => scrollToCard(selId), 50); // 平滑捲動回第二層
                         return;
                     }
                 }
                 
-                // 其他情況：退回卡片總覽第一層
+                // 其他分頁 (如設定) -> Layer 1 (卡片總覽第一層)
                 switchTab('cards', document.querySelectorAll('.nav-btn')[0]);
+                window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
                 return;
             }
 
-            // 檢查是否捲動往下 (Layer 2) -> 返回頂端總覽 (Layer 1)
-            if (window.scrollY > 50) {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+            // 3. 檢查是否處於 Layer 2 (畫面往下捲動看卡片) -> Layer 1 (返回頂端卡片總覽)
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+            if (scrollTop > 5) {
+                window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
                 return;
             }
 
-            // 如果在最頂層且沒彈窗，詢問離開
+            // 4. 第一層 (畫面在最頂端且無任何視窗) -> 詢問離開
             document.getElementById('exit-modal').style.display = 'flex';
         });
 
@@ -409,6 +418,15 @@
                 appData = { ...appData, ...JSON.parse(data) }; 
                 if (appData.sortPreference === 'balance-desc') { appData.sortPreference = 'balance'; appData.balanceSortDir = 'desc'; }
                 else if (appData.sortPreference === 'balance-asc') { appData.sortPreference = 'balance'; appData.balanceSortDir = 'asc'; }
+                
+                // 自動補齊舊資料的歸零週期紀錄
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                const currentMonthKey = `${currentYear}-${now.getMonth()}`;
+                appData.cards.forEach(c => {
+                    if (c.initRegs > 0 && !c.initRegsYear) c.initRegsYear = currentYear;
+                    if (c.initTopups > 0 && !c.initTopupsMonth) c.initTopupsMonth = currentMonthKey;
+                });
             }
         };
         const saveData = () => { localStorage.setItem(DB_KEY, JSON.stringify(appData)); updateHistorySelect(); renderHistory(); };
@@ -422,12 +440,12 @@
         };
         const formatCardNumber = str => str ? String(str).replace(/[\s-]/g, '').replace(/(.{4})(?!$)/g, '$1-') : '無';
         
-        // 取得「真實發生」的交易次數。 checkMonth=true 限制本月
+        // 取得「真實發生」的交易次數。 checkMonth=false為查詢「今年」，checkMonth=true為查詢「今年且本月」
         const getTxCount = (cardId, type, checkMonth = false) => {
             const y = new Date().getFullYear(), m = new Date().getMonth();
             return appData.transactions.filter(t => {
                 const d = new Date(t.timestamp);
-                return t.cardId === cardId && t.type === type && (!checkMonth || (d.getFullYear() === y && d.getMonth() === m));
+                return t.cardId === cardId && t.type === type && d.getFullYear() === y && (!checkMonth || d.getMonth() === m);
             }).length;
         };
 
@@ -452,7 +470,6 @@
         function toggleStar(e, id) { e.stopPropagation(); const c = appData.cards.find(c => c.id === id); if (c) { c.isStarred = !c.isStarred; saveData(); renderCards(); triggerAutoBackup(); } }
         function scrollToCard(id) { const el = document.getElementById('card-view-' + id); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.boxShadow = '0 0 20px 5px var(--neon-cyan)'; setTimeout(() => el.style.boxShadow = '', 1500); } }
         
-        // 新增 preventScroll 參數避免切換時強制跳到最上面
         function switchTab(id, btn, preventScroll = false) { 
             document.querySelectorAll('.tab-content, .nav-btn').forEach(el => el.classList.remove('active-tab', 'active')); 
             document.getElementById(`tab-${id}`).classList.add('active-tab'); 
@@ -506,6 +523,7 @@
             if (!name) return alert('請輸入卡片名稱');
             const isJCB = type === '悠遊卡' ? document.getElementById('new-card-is-jcb').checked : false;
             const cardId = Date.now().toString();
+            const now = new Date();
             
             appData.cards.push({
                 id: cardId, type, isJCB, isStarred: false, name,
@@ -513,10 +531,11 @@
                 creditNum: document.getElementById('new-card-credit').value.trim(),
                 transitNum: document.getElementById('new-card-transit').value.trim(),
                 initRegs: parseInt(document.getElementById('new-card-regcount').value) || 0,
-                initTopups: parseInt(document.getElementById('new-card-topup-count').value) || 0
+                initTopups: parseInt(document.getElementById('new-card-topup-count').value) || 0,
+                initRegsYear: now.getFullYear(), // 鎖定輸入時的年份
+                initTopupsMonth: `${now.getFullYear()}-${now.getMonth()}` // 鎖定輸入時的月份
             });
             getCustomOrder();
-            // 不再產生影響限制判斷的虛假交易紀錄
             
             saveData(); renderCards(); triggerAutoBackup();
             ['name', 'credit', 'transit', 'balance', 'topup-count', 'regcount'].forEach(f => document.getElementById(`new-card-${f}`).value = '');
@@ -526,11 +545,19 @@
 
         function openEditCardModal(id) {
             const c = appData.cards.find(c => c.id === id); if (!c) return;
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonthKey = `${currentYear}-${now.getMonth()}`;
+            
+            // 取出目前仍然有效的初始值
+            const effectiveInitRegs = (c.initRegsYear === currentYear) ? (c.initRegs || 0) : 0;
+            const effectiveInitTopups = (c.initTopupsMonth === currentMonthKey) ? (c.initTopups || 0) : 0;
+
             document.getElementById('edit-card-id').value = c.id;
             ['name', 'balance', 'type', 'credit', 'transit'].forEach(f => document.getElementById(`edit-card-${f}`).value = c[`${f}Num`] || c[f] || '');
             document.getElementById('edit-card-is-jcb').checked = c.isJCB !== false;
-            document.getElementById('edit-card-regcount').value = c.initRegs || 0;
-            document.getElementById('edit-card-topup-count').value = c.initTopups || 0;
+            document.getElementById('edit-card-regcount').value = effectiveInitRegs;
+            document.getElementById('edit-card-topup-count').value = effectiveInitTopups;
             toggleJcbUI('edit-card'); document.getElementById('edit-card-modal').style.display = 'flex';
         }
 
@@ -543,8 +570,14 @@
             c.isJCB = c.type === '悠遊卡' ? document.getElementById('edit-card-is-jcb').checked : false;
             c.creditNum = document.getElementById('edit-card-credit').value.trim();
             c.transitNum = document.getElementById('edit-card-transit').value.trim();
-            c.initRegs = parseInt(document.getElementById('edit-card-regcount').value) || 0;
-            c.initTopups = parseInt(document.getElementById('edit-card-topup-count').value) || 0;
+
+            const now = new Date();
+            const newRegs = parseInt(document.getElementById('edit-card-regcount').value) || 0;
+            const newTopups = parseInt(document.getElementById('edit-card-topup-count').value) || 0;
+            
+            // 如果使用者改了數值，就更新鎖定的年月以確保生效
+            if (c.initRegs !== newRegs) { c.initRegs = newRegs; c.initRegsYear = now.getFullYear(); }
+            if (c.initTopups !== newTopups) { c.initTopups = newTopups; c.initTopupsMonth = `${now.getFullYear()}-${now.getMonth()}`; }
 
             const newBal = parseInt(document.getElementById('edit-card-balance').value);
             if (!isNaN(newBal) && newBal >= 0 && newBal !== c.balance) { addTx(c.id, '校正', newBal - c.balance, '系統手動校正餘額'); c.balance = newBal; }
@@ -564,8 +597,16 @@
         function openActionModal(id, type) {
             currentAction = { cardId: id, type };
             if (type === '登錄') {
-                // 這裡的防呆完美避開了建檔初始值的影響，因為只抓本月「真實」產生的紀錄
-                if (getTxCount(id, '登錄', true) > 0) return alert('⛔ 本月已登錄過！');
+                // 檢查該卡本年度總登錄次數
+                const c = appData.cards.find(card => card.id === id);
+                const currentYear = new Date().getFullYear();
+                const effectiveInitRegs = (c.initRegsYear === currentYear) ? (c.initRegs || 0) : 0;
+                const realThisYearRegs = getTxCount(id, '登錄', false);
+                const displayRegs = effectiveInitRegs + realThisYearRegs;
+                
+                if (displayRegs >= 3) return alert('⛔ 本年度登錄已達 3 次上限！');
+                if (getTxCount(id, '登錄', true) > 0) return alert('⛔ 本月已登錄過！每月限登錄1次。');
+                
                 if (confirm('確認新增今日登錄記錄？')) executeAction(id, type, 0, '');
             } else {
                 document.getElementById('modal-title').innerText = '執行扣款';
@@ -682,8 +723,16 @@
             }
 
             let sorted = [...appData.cards];
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonthKey = `${currentYear}-${now.getMonth()}`;
+
             // 計算總次數輔助排序
-            const getSortRegs = id => { const c = appData.cards.find(card => card.id===id); return (c.initRegs||0) + getTxCount(id, '登錄', false); };
+            const getSortRegs = id => { 
+                const c = appData.cards.find(card => card.id===id); 
+                const effectiveInitRegs = (c.initRegsYear === currentYear) ? (c.initRegs || 0) : 0;
+                return effectiveInitRegs + getTxCount(id, '登錄', false); 
+            };
             
             if (sortType === 'smart') sorted.sort((a,b) => { const rA = (a.type === '悠遊卡' && a.isJCB !== false) ? getSortRegs(a.id) : 999, rB = (b.type === '悠遊卡' && b.isJCB !== false) ? getSortRegs(b.id) : 999; return rA !== rB ? rA - rB : a.balance - b.balance; });
             else if (sortType === 'balance') {
@@ -693,27 +742,37 @@
             else if (sortType === 'type') sorted.sort((a,b) => a.type.localeCompare(b.type));
             else if (sortType === 'custom') { const o = getCustomOrder(); sorted.sort((a,b) => o.indexOf(a.id) - o.indexOf(b.id)); }
 
-            const currentMonth = new Date().getMonth() + 1;
             const viewData = sorted.map(c => {
                 const isJCB = c.type === '悠遊卡' && c.isJCB !== false;
                 const isTruncated = c.name.length > 10;
                 const displayName = isTruncated ? c.name.substring(0, 10) + '...' : c.name;
                 
-                // 計算顯示的總次數 (建檔前輸入值 + 真實發生值)
-                const realTopups = getTxCount(c.id, '儲值', false);
-                const realRegs = getTxCount(c.id, '登錄', false);
-                const totalTopups = (c.initTopups || 0) + realTopups;
-                const totalRegs = isJCB ? (c.initRegs || 0) + realRegs : null;
-                const thisMonthTopups = getTxCount(c.id, '儲值', true);
+                // --- 計算目前有效的初始值 ---
+                const effectiveInitRegs = (c.initRegsYear === currentYear) ? (c.initRegs || 0) : 0;
+                const effectiveInitTopups = (c.initTopupsMonth === currentMonthKey) ? (c.initTopups || 0) : 0;
+
+                // --- 取得真實交易發生的次數 ---
+                const realThisYearRegs = getTxCount(c.id, '登錄', false);
+                const realThisMonthTopups = getTxCount(c.id, '儲值', true);
+                const realThisMonthRegs = getTxCount(c.id, '登錄', true);
                 
-                return { ...c, isJCB, totalTopups, totalRegs, thisMonthTopups, cls: c.type === '悠遊卡' ? 'type-easy' : (c.type === '一卡通' ? 'type-ipass' : 'type-icash'), starCls: c.isStarred ? 'active' : '', cred: formatCardNumber(c.creditNum), trans: formatCardNumber(c.transitNum), displayName, isTruncated };
+                // --- 合計顯示次數 ---
+                const displayTopups = effectiveInitTopups + realThisMonthTopups;
+                const displayRegs = isJCB ? (effectiveInitRegs + realThisYearRegs) : null;
+                
+                // --- 提示邏輯 ---
+                const needsTopup = realThisMonthRegs > 0 && displayTopups === 0;
+                const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                const isUrgent = needsTopup && (daysInMonth - now.getDate() <= 3);
+                
+                return { ...c, isJCB, displayTopups, displayRegs, needsTopup, isUrgent, cls: c.type === '悠遊卡' ? 'type-easy' : (c.type === '一卡通' ? 'type-ipass' : 'type-icash'), starCls: c.isStarred ? 'active' : '', cred: formatCardNumber(c.creditNum), trans: formatCardNumber(c.transitNum), displayName, isTruncated };
             });
 
-            document.getElementById('overview-table-body').innerHTML = `<tr><th>名稱</th><th style="width:23%;text-align:right;">餘額</th><th style="width:23%;text-align:center;">總儲值</th><th style="width:23%;text-align:center;">總登錄</th></tr>` + 
+            document.getElementById('overview-table-body').innerHTML = `<tr><th>名稱</th><th style="width:23%;text-align:right;">餘額</th><th style="width:23%;text-align:center;">本月儲值</th><th style="width:23%;text-align:center;">本年登錄</th></tr>` + 
                 viewData.map(v => `<tr class="clickable-row sortable-row" data-id="${v.id}" draggable="true" onclick="if(!window.isDragging) scrollToCard('${v.id}')">
                     <td style="white-space:nowrap;"><span class="drag-handle">☰</span><span class="star-btn ${v.starCls}" onclick="toggleStar(event, '${v.id}')">${v.isStarred ? '★' : '☆'}</span><span class="card-type ${v.cls}" style="font-size:12px; padding:3px 6px; vertical-align:middle; display:inline-block;">${v.type}</span> <span style="vertical-align:middle;" title="${v.name}">${v.displayName}</span></td>
-                    <td class="val-num" style="text-align:right; vertical-align:middle;">$${v.balance.toLocaleString()}</td><td class="val-num" style="text-align:center; vertical-align:middle;">${v.totalTopups}</td>
-                    <td class="val-num" style="text-align:center; color:var(--neon-purple); vertical-align:middle;">${v.totalRegs !== null ? v.totalRegs : '<span style="color:var(--text-muted);">-</span>'}</td></tr>`).join('');
+                    <td class="val-num" style="text-align:right; vertical-align:middle;">$${v.balance.toLocaleString()}</td><td class="val-num" style="text-align:center; vertical-align:middle;">${v.displayTopups}</td>
+                    <td class="val-num" style="text-align:center; color:var(--neon-purple); vertical-align:middle;">${v.displayRegs !== null ? v.displayRegs : '<span style="color:var(--text-muted);">-</span>'}</td></tr>`).join('');
 
             // 拖曳排序事件綁定
             document.querySelectorAll('.sortable-row').forEach(row => {
@@ -749,19 +808,26 @@
                 handle.addEventListener('touchcancel', e => { row.classList.remove('dragging'); window.isDragging = false; });
             });
 
-            cont.innerHTML = viewData.map(v => `
-                <div class="card-item" id="card-view-${v.id}">
+            cont.innerHTML = viewData.map(v => {
+                const specialCardCls = v.isUrgent ? 'card-urgent' : (v.needsTopup ? 'card-warning' : '');
+                const bannerHtml = v.isUrgent ? `<div class="banner-urgent">⚠️ 月底將至！本月已登錄，請盡速完成儲值</div>` : 
+                                  (v.needsTopup ? `<div class="banner-warning">💡 溫馨提示：本月已登錄，請記得去儲值</div>` : '');
+
+                return `
+                <div class="card-item ${specialCardCls}" id="card-view-${v.id}">
                     <div class="card-top-row"><div style="display:flex; align-items:center; gap:4px; flex:1; margin-right:4px; min-width:0;"><div class="card-type ${v.cls}" style="flex-shrink:0;">${v.type}</div><div class="card-title" style="display:flex; align-items:center; gap:4px; flex:1; min-width:0;"><span class="${v.isTruncated ? 'name-truncated' : ''}" ${v.isTruncated ? `onclick="showMessageModal('${v.name}')"` : ''} title="${v.name}">${v.displayName}</span><button class="btn-gear" style="font-size:18px; padding:0; flex-shrink:0;" onclick="viewHistory('${v.id}')">📜</button></div></div><div style="display:flex; align-items:center; gap:6px; flex-shrink:0;"><div class="card-balance-compact">$${v.balance.toLocaleString()}</div><button class="btn-gear" style="flex-shrink:0;" onclick="openEditCardModal('${v.id}')">⚙️</button></div></div>
+                    ${bannerHtml}
                     <div class="card-numbers"><div>💳 信: <span>${v.cred}</span></div><div>🎫 票: <span>${v.trans}</span></div></div>
                     <div class="card-info">
-                        ${v.totalTopups > 0 ? `<div style="color:var(--neon-green); font-weight:bold; text-shadow:0 0 5px rgba(1,255,195,0.4);">⚡總儲值: ${v.totalTopups}次 ${v.thisMonthTopups > 0 ? `<span style="font-size:12px; font-weight:normal; opacity:0.9;">(本月+${v.thisMonthTopups})</span>` : ''}</div>` : `<div style="color:var(--text-muted);">無儲值紀錄</div>`} 
-                        ${v.isJCB ? `<div style="border-left:1px solid rgba(255,255,255,0.1); padding-left:10px;">🔖總登錄: <b style="color:var(--neon-purple);">${v.totalRegs}</b> 次</div>` : ''}
+                        ${v.displayTopups > 0 ? `<div style="color:var(--neon-green); font-weight:bold; text-shadow:0 0 5px rgba(1,255,195,0.4);">⚡本月儲值: ${v.displayTopups} 次</div>` : `<div style="color:var(--text-muted);">本月無儲值紀錄</div>`} 
+                        ${v.isJCB ? `<div style="border-left:1px solid rgba(255,255,255,0.1); padding-left:10px;">🔖本年登錄: <b style="color:var(--neon-purple);">${v.displayRegs}</b> 次</div>` : ''}
                     </div>
                     <div class="card-actions-compact" ${v.isJCB ? '' : 'style="justify-content:center;"'}>
                         <button class="btn-sm btn-sm-deduct" ${v.isJCB ? '' : 'style="flex:none; width:calc(50% - 5px);"'} onclick="openActionModal('${v.id}', '扣款')">扣款</button>
                         ${v.isJCB ? `<button class="btn-sm btn-sm-reg" onclick="openActionModal('${v.id}', '登錄')">登錄</button>` : ''}
                     </div>
-                </div>`).join('');
+                </div>`;
+            }).join('');
         }
 
         // --- 統計視圖渲染邏輯 ---
@@ -769,7 +835,7 @@
             const cont = document.getElementById('history-container');
             const txs = appData.transactions.filter(t => t.type === targetType);
             
-            // 計算建檔時輸入的歷史基礎值
+            // 計算建檔時輸入的歷史基礎值 (為了顯示大盤總計)
             let initTotal = 0;
             appData.cards.forEach(c => {
                 if (targetType === '登錄' && c.initRegs) initTotal += c.initRegs;
@@ -789,9 +855,9 @@
             // 產出 Header HTML
             let html = `
                 <div style="background:var(--glass-bg); padding:15px; border-radius:10px; margin-bottom:18px; text-align:center; border:1px solid var(--neon-cyan); box-shadow: 0 0 15px rgba(5,217,232,0.2);">
-                    <div style="font-size:15px; color:var(--text-main); margin-bottom:4px;">全卡片累積${targetType}總計</div>
+                    <div style="font-size:15px; color:var(--text-main); margin-bottom:4px;">所有年份全卡片累積${targetType}總計</div>
                     <div style="font-size:26px; color:var(--neon-cyan); font-weight:bold; font-family:'Orbitron', sans-serif;">${initTotal + txs.length} <span style="font-size:16px;">次</span></div>
-                    ${initTotal > 0 ? `<div style="font-size:13px; color:var(--text-muted); margin-top:5px;">(包含建檔輸入的 ${initTotal} 次)</div>` : ''}
+                    ${initTotal > 0 ? `<div style="font-size:13px; color:var(--text-muted); margin-top:5px;">(包含手動建檔的 ${initTotal} 次)</div>` : ''}
                 </div>
             `;
 
