@@ -349,6 +349,20 @@
     </div>
 
 
+    <!-- 儲值選項視窗 -->
+    <div class="modal-overlay" id="topup-option-modal" style="z-index: 25;">
+        <div class="modal" style="text-align: center; max-width: 320px;">
+            <h3 style="color: var(--neon-cyan); font-size: 20px; margin-bottom: 15px;">選擇儲值金額</h3>
+            <p style="color: white; font-size: 16px; margin-bottom: 20px;">是否要快速儲值預設的 500 元？</p>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button class="btn-block" style="margin-bottom:0;" onclick="quickTopup500()">確定 (儲值 500 元)</button>
+                <button class="btn-block btn-action-alt" style="margin-bottom:0;" onclick="openCustomTopup()">輸入其他金額</button>
+                <button class="btn-cancel" style="width: 100%; margin-top: 5px; flex: none;" onclick="closeModal('topup-option-modal')">取消</button>
+            </div>
+        </div>
+    </div>
+
+
     <!-- 啟動提醒視窗 -->
     <div class="modal-overlay" id="startup-reminder-modal" style="z-index: 50;">
         <div class="modal" style="text-align: center; max-width: 320px; border-color: var(--neon-orange); box-shadow: 0 0 30px rgba(255,179,15,0.2);">
@@ -415,7 +429,7 @@
 
 
             // 1. 檢查是否有彈出視窗
-            const modals = ['startup-reminder-modal', 'exit-modal', 'message-modal', 'action-modal', 'edit-modal', 'edit-card-modal'];
+            const modals = ['startup-reminder-modal', 'exit-modal', 'message-modal', 'action-modal', 'edit-modal', 'edit-card-modal', 'topup-option-modal'];
             let didCloseModal = false;
             for (let id of modals) {
                 let el = document.getElementById(id);
@@ -721,14 +735,28 @@
                 
                 if (confirm('確認新增今日登錄記錄？')) executeAction(id, type, 0, '');
             } else if (type === '儲值') {
-                document.getElementById('modal-title').innerText = '輸入手動儲值';
-                document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = '';
-                document.getElementById('action-modal').style.display = 'flex'; setTimeout(()=>document.getElementById('modal-amount').focus(), 100);
+                document.getElementById('topup-option-modal').style.display = 'flex';
             } else {
                 document.getElementById('modal-title').innerText = '執行扣款';
                 document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = '';
                 document.getElementById('action-modal').style.display = 'flex'; setTimeout(()=>document.getElementById('modal-amount').focus(), 100);
             }
+        }
+
+
+        function quickTopup500() {
+            executeAction(currentAction.cardId, '儲值', 500, '手動儲值 500 元');
+            closeModal('topup-option-modal');
+        }
+
+
+        function openCustomTopup() {
+            closeModal('topup-option-modal');
+            document.getElementById('modal-title').innerText = '輸入手動儲值';
+            document.getElementById('modal-amount').value = ''; 
+            document.getElementById('modal-memo').value = '';
+            document.getElementById('action-modal').style.display = 'flex'; 
+            setTimeout(()=>document.getElementById('modal-amount').focus(), 100);
         }
 
 
