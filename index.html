@@ -3,1184 +3,688 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>電子票證管家</title>
-    <link rel="icon" href="icon.png" type="image/png">
-    <link rel="shortcut icon" href="icon.png" type="image/png">
+    <title>信用卡夾</title>
+   
+    <!-- PWA 相關設定開始 -->
+    <!-- 1. Apple iOS 專用設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="信用卡夾">
+    <link rel="apple-touch-icon" href="icon.png"> <!-- iOS 讀取圖示 -->
+   
+    <!-- 2. Android / Chrome 專用 Web App Manifest (使用 Data URI 直接嵌入) -->
+    <link rel="manifest" href='data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22%E4%BF%A1%E7%94%A8%E5%8D%A1%E5%A4%BE%22%2C%22short_name%22%3A%22%E5%8D%A1%E5%A4%BE%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f4f6f8%22%2C%22theme_color%22%3A%22%23333333%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22icon.png%22%2C%22sizes%22%3A%22192x192%20512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
+    <!-- PWA 相關設定結束 -->
+
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Noto+Sans+TC:wght@400;700&display=swap');
-
-
         :root {
-            --bg-color: #0b0f19;
-            --glass-bg: rgba(20, 27, 45, 0.7);
-            --glass-border: rgba(0, 243, 255, 0.2);
-            --text-main: #e2e8f0;
-            --text-muted: #8b9bb4;
-            --neon-cyan: #05d9e8;
-            --neon-pink: #ff2a6d;
-            --neon-green: #01ffc3;
-            --neon-orange: #ffb30f;
-            --neon-purple: #b366ff;
+            --bg-color: #f4f6f8;
+            --text-color: #333;
+            --primary: #007AB5;
+            --border: #ccc;
         }
 
 
-        * { box-sizing: border-box; }
-        
-        body { 
-            font-family: 'Noto Sans TC', -apple-system, sans-serif; 
-            margin: 0; padding: 0; padding-bottom: 95px; 
-            background-color: var(--bg-color); 
-            background-image: radial-gradient(circle at 15% 50%, rgba(5, 217, 232, 0.05), transparent 25%), radial-gradient(circle at 85% 30%, rgba(255, 42, 109, 0.05), transparent 25%);
-            background-attachment: fixed;
-            color: var(--text-main); 
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color); overflow-x: hidden; }
+
+
+        /* 頂部資訊列 */
+        header { background: #333; color: white; padding: 10px; font-size: 12px; text-align: center; }
+       
+        /* 控制列 (搜尋、按鈕) */
+        .controls { padding: 15px; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+        .flex-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        select, input[type="text"], input[type="file"] { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
+        button { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-outline { background: white; border: 1px solid var(--primary); color: var(--primary); }
+        .btn-danger { background: #E3000F; color: white; }
+
+
+        /* 卡片容器 */
+        #card-container { padding: 15px; min-height: calc(100vh - 150px); }
+       
+        /* 清單模式 */
+        .list-view { display: flex; flex-direction: column; gap: 15px; }
+       
+        /* 堆疊模式 */
+        .stack-view { position: relative; padding-top: 10px; }
+        .stack-view .card-wrapper { position: absolute; width: calc(100% - 30px); transition: all 0.3s ease; cursor: pointer; }
+        .stack-view .card-wrapper:not(.expanded) { height: 60px; overflow: hidden; box-shadow: 0 -2px 5px rgba(0,0,0,0.2); }
+        .stack-view .card-wrapper.expanded { position: relative; z-index: 50; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+
+
+        /* 卡片本體設計 */
+        .card {
+            border-radius: 12px; padding: 20px; color: white; position: relative; overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15); min-height: 200px; display: flex; flex-direction: column; justify-content: space-between;
         }
-        
-        /* Navbar & Tabs */
-        .header { 
-            background: rgba(11, 15, 25, 0.8); backdrop-filter: blur(10px); color: var(--neon-cyan); 
-            padding: 18px 20px; text-align: center; font-size: 26px; font-weight: bold; 
-            font-family: 'Orbitron', 'Noto Sans TC', sans-serif; letter-spacing: 2px;
-            position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--glass-border); text-shadow: 0 0 10px rgba(5, 217, 232, 0.5);
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; font-size: 18px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+        .card-holder { font-size: 14px; font-weight: normal; opacity: 0.9; }
+        .card-body { margin-top: 20px; }
+        .card-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 6px; }
+        .card-label { font-size: 12px; opacity: 0.8; }
+        .card-value { font-family: monospace; font-size: 16px; letter-spacing: 1px; }
+        .org-logo { position: absolute; bottom: 15px; right: 20px; font-size: 24px; font-weight: 900; font-style: italic; opacity: 0.8; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+       
+        .copy-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+        .action-row { display: flex; justify-content: space-between; margin-top: 15px; }
+
+
+        /* 16 家銀行 CI 顏色 */
+        .bank-中國信託 { background: linear-gradient(135deg, #008485, #005051); }
+        .bank-國泰世華 { background: linear-gradient(135deg, #009E4B, #8B9A00); }
+        .bank-台新 { background: linear-gradient(135deg, #E3000F, #FF5A5F); }
+        .bank-永豐 { background: linear-gradient(135deg, #9B001F, #555555); }
+        .bank-遠東 { background: linear-gradient(135deg, #E3000F, #D99600); }
+        .bank-華南 { background: linear-gradient(135deg, #C60018, #800010); }
+        .bank-聯邦 { background: linear-gradient(135deg, #00A94F, #00602D); }
+        .bank-樂天 { background: linear-gradient(135deg, #BF0000, #FF3333); }
+        .bank-富邦 { background: linear-gradient(135deg, #007AB5, #004A70); }
+        .bank-玉山 { background: linear-gradient(135deg, #00A94F, #8CC63F); }
+        .bank-彰化 { background: linear-gradient(135deg, #E3000F, #99000A); }
+        .bank-元大 { background: linear-gradient(135deg, #003B70, #E3000F); }
+        .bank-新光 { background: linear-gradient(135deg, #F15A24, #C13F10); }
+        .bank-凱基 { background: linear-gradient(135deg, #F58220, #B35800); }
+        .bank-第一 { background: linear-gradient(135deg, #006241, #003020); }
+        .bank-星展 { background: linear-gradient(135deg, #EA1C24, #111111); }
+        .bank-default { background: linear-gradient(135deg, #555, #222); }
+
+
+        /* 模態框 (新增/編輯/設定) */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 1000; overflow-y: auto; padding-bottom: 250px; }
+        .modal-header { padding: 15px; background: var(--primary); color: white; display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 10; }
+        .form-group { padding: 10px 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 14px; font-weight: bold; }
+        .form-group input:not([type="file"]), .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 16px; }
+        .form-group input[readonly] { background: #eef; cursor: pointer; } /* 提示使用虛擬鍵盤 */
+
+
+        /* 自訂螢幕數字鍵盤 */
+        #virtual-keypad {
+            position: fixed; bottom: 0; left: 0; width: 100%; background: #ddd; padding: 10px;
+            display: none; grid-template-columns: repeat(3, 1fr); gap: 10px; z-index: 1100; box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
         }
-        
-        .tab-content { display: none; padding: 15px; max-width: 600px; margin: 0 auto; animation: fadeIn 0.3s ease-in-out; }
-        .active-tab { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-
-        .bottom-nav { 
-            display: flex; justify-content: space-around; background: rgba(11, 15, 25, 0.85); backdrop-filter: blur(15px);
-            position: fixed; bottom: 0; width: 100%; border-top: 1px solid var(--glass-border); padding: 14px 0; z-index: 10; 
-        }
-        .nav-btn { background: none; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; width: 33%; transition: all 0.3s; } 
-        .nav-icon { font-size: 26px; margin-bottom: 5px; transition: all 0.3s;} 
-        .nav-btn.active { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(5, 217, 232, 0.5); }
-        .nav-btn.active .nav-icon { transform: translateY(-3px) scale(1.1); }
-        
-        /* Cards */
-        .card-item { 
-            background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 12px; 
-            padding: 15px 12px; margin-bottom: 18px; box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.3); position: relative; overflow: hidden; transition: box-shadow 0.4s ease-out; 
-        }
-        .card-item::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple)); }
-        
-        .card-top-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px; }
-        .card-title { font-size: 18px; font-weight: bold; color: #fff; white-space: nowrap; } 
-        .card-type { font-size: 13px; padding: 4px 6px; border-radius: 8px; color: #fff; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5); white-space: nowrap; } 
-        .type-easy { background: linear-gradient(135deg, #0088A8, var(--neon-cyan)); } 
-        .type-ipass { background: linear-gradient(135deg, #F39800, var(--neon-orange)); } 
-        .type-icash { background: linear-gradient(135deg, #E60012, var(--neon-pink)); } 
-        
-        .btn-gear { background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; padding: 4px; transition: all 0.3s; } 
-        .btn-gear:hover { color: var(--neon-cyan); transform: rotate(90deg); }
-
-
-        .card-numbers { font-size: 13px; color: var(--text-muted); background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; font-family: 'Orbitron', 'Noto Sans TC', sans-serif; display: flex; justify-content: space-between; gap: 5px; } 
-        .card-numbers span { color: var(--text-main); font-weight: bold; }
-        .card-balance-compact { font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: bold; text-align: right; color: #fff; text-shadow: 0 0 10px rgba(5,217,232,0.5); letter-spacing: -1px; white-space: nowrap; } 
-        .card-info { font-size: 14px; color: var(--text-main); text-align: center; margin-bottom: 14px; min-height: 18px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px; display:flex; justify-content: space-around; align-items:center;} 
-        
-        /* Actions */
-        .card-actions-compact { display: flex; gap: 12px; justify-content: space-between; }
-        .btn-sm { padding: 12px 6px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1; color: white; transition: all 0.2s; text-shadow: 0 1px 2px rgba(0,0,0,0.3); text-align: center; letter-spacing: 1px; } 
-        .btn-sm:active { transform: scale(0.95); }
-        .btn-sm-deduct { background: linear-gradient(135deg, #d80032, var(--neon-pink)); box-shadow: 0 2px 8px rgba(255,42,109,0.3); }
-        .btn-sm-reg { background: linear-gradient(135deg, #6a00f4, var(--neon-purple)); box-shadow: 0 2px 8px rgba(179,102,255,0.3); }
-        
-        /* Table */
-        .overview-card { background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.3); }
-        .overview-table { width: 100%; border-collapse: collapse; font-size: 15px; text-align: left; } 
-        .overview-table th { color: var(--neon-cyan); padding: 10px 4px; border-bottom: 1px solid var(--glass-border); font-weight: normal; }
-        .overview-table td { padding: 10px 4px; border-bottom: 1px dashed rgba(255,255,255,0.05); color: var(--text-main); }
-        .overview-table tr:last-child td { border-bottom: none; }
-        .val-num { font-family: 'Orbitron', sans-serif; font-weight: bold; color: #fff;}
-        .star-btn { cursor: pointer; color: var(--text-muted); font-size: 20px; margin: 0 4px; transition: 0.2s; user-select: none; } 
-        .star-btn:hover { color: var(--neon-orange); }
-        .star-btn.active { color: var(--neon-orange); text-shadow: 0 0 8px rgba(255, 179, 15, 0.6); }
-        .clickable-row { cursor: pointer; transition: 0.2s ease; }
-        .clickable-row:hover { background: rgba(255,255,255,0.08); border-radius: 4px; }
-        .sortable-row.dragging { background: rgba(5, 217, 232, 0.15) !important; opacity: 0.7; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        
-        /* 拖曳把手最佳化 */
-        .drag-handle { 
-            cursor: grab; margin-right: 6px; color: var(--text-muted); font-size: 18px; transition: color 0.2s; 
-            touch-action: none; padding: 8px 4px; display: inline-block;
-        } 
-        .drag-handle:hover { color: var(--neon-cyan); }
-        .sortable-row:active .drag-handle { cursor: grabbing; }
-
-
-        /* General UI Elements */
-        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 8px; }
-        .btn-install { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); color: #000; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(5,217,232,0.5); width: 100%; padding: 14px; border-radius: 8px; margin-bottom: 15px; cursor: pointer; border: none;}
-        .form-group { margin-bottom: 22px; }
-        .form-group label { display: block; margin-bottom: 10px; font-size: 16px; color: var(--neon-cyan); letter-spacing: 1px;} 
-        .form-control { width: 100%; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-size: 17px; color: #fff; transition: all 0.3s; } 
-        .form-control:focus { outline: none; border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(5,217,232,0.3); background: rgba(0,0,0,0.5);}
-        select.form-control { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2305d9e8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 12px center; background-size: 1em; }
-        select.form-control option { background: var(--bg-color); color: #fff; }
-        select.form-control optgroup { color: var(--neon-cyan); font-weight: bold; font-style: normal; background: #161b29;}
-        .checkbox-label { display: flex; align-items: center; gap: 10px; font-size: 16px; color: #fff; cursor: pointer; padding: 6px 0; margin-bottom: 0 !important; } 
-        .checkbox-label input { width: 20px; height: 20px; accent-color: var(--neon-cyan); cursor: pointer; }
-        .btn-block { width: 100%; padding: 16px; font-size: 18px; margin-bottom: 12px; background: linear-gradient(135deg, #00b4d8, var(--neon-cyan)); color: #000; font-weight: bold; box-shadow: 0 4px 15px rgba(5,217,232,0.3); border:none; border-radius:8px; cursor:pointer;} 
-        .btn-backup { background: linear-gradient(135deg, #7b2cbf, var(--neon-purple)); color: #fff; box-shadow: 0 4px 15px rgba(179,102,255,0.3); }
-        .btn-action-alt { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; box-shadow: none; font-weight: normal;}
-        .btn-action-alt:hover { background: rgba(255,255,255,0.2); }
-        .btn-danger-alt { background: rgba(255,42,109,0.1); border: 1px solid rgba(255,42,109,0.3); color: var(--neon-pink); box-shadow: none; font-weight: normal; margin-top: 10px; }
-        
-        /* Modals */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20; justify-content: center; align-items: center; }
-        .modal { background: #161b29; border: 1px solid var(--neon-cyan); padding: 25px; border-radius: 16px; width: 90%; max-width: 400px; max-height: 90vh; overflow-y: auto; box-shadow: 0 0 30px rgba(5,217,232,0.2); }
-        .modal h3 { margin-top: 0; font-size: 20px; color: var(--neon-cyan); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 20px;}
-        .modal-buttons { display: flex; gap: 15px; margin-top: 25px; flex-wrap: wrap; }
-        .btn-cancel { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; box-shadow: none; flex:1 1 40%; padding:14px; border-radius:8px; cursor:pointer; font-size: 16px;}
-
-
-        /* History Items */
-        .history-item { background: var(--glass-bg); padding: 18px 15px; border-radius: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-start; border: 1px solid rgba(255,255,255,0.05); }
-        .history-left { display: flex; flex-direction: column; flex: 1; }
-        .history-time { font-size: 14px; color: var(--text-muted); font-family: 'Orbitron', sans-serif;} 
-        .history-desc { font-size: 18px; font-weight: bold; margin-top: 8px; line-height: 1.4; color: #fff;} 
-        .history-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
-        .history-amount { font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: bold; letter-spacing: 1px;} 
-        .hist-deduct { border-left: 4px solid var(--neon-pink); background: linear-gradient(90deg, rgba(255,42,109,0.1) 0%, var(--glass-bg) 50%); }
-        .hist-topup { border-left: 4px solid var(--neon-cyan); background: linear-gradient(90deg, rgba(5,217,232,0.1) 0%, var(--glass-bg) 50%); }
-        .hist-calib { border-left: 4px solid var(--neon-orange); background: linear-gradient(90deg, rgba(255,179,15,0.1) 0%, var(--glass-bg) 50%); }
-        .hist-reg { border-left: 4px solid var(--neon-purple); background: linear-gradient(90deg, rgba(179,102,255,0.1) 0%, var(--glass-bg) 50%); }
-        .amt-deduct { color: var(--neon-pink); text-shadow: 0 0 8px rgba(255,42,109,0.4);}
-        .amt-topup { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(5,217,232,0.4);}
-        .amt-calib { color: var(--neon-orange); text-shadow: 0 0 8px rgba(255,179,15,0.4);}
-        .amt-reg { color: var(--neon-purple); text-shadow: 0 0 8px rgba(179,102,255,0.4);}
-        .btn-edit-hist { margin-top: 10px; padding: 6px 14px; font-size: 14px; cursor: pointer; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff; transition: 0.2s;} 
-        .btn-delete-hist { margin-top: 10px; padding: 6px 14px; font-size: 14px; cursor: pointer; background: rgba(255,42,109,0.1); border: 1px solid rgba(255,42,109,0.3); border-radius: 6px; color: var(--neon-pink); transition: 0.2s; margin-left: 8px;} 
-        .backup-notice { background: linear-gradient(90deg, rgba(1,255,195,0.1), rgba(1,255,195,0.02)); color: var(--neon-green); padding: 12px; border-radius: 8px; text-align: center; font-size: 15px; margin-bottom: 15px; border: 1px solid rgba(1,255,195,0.3); display: none; } 
-        
-        .name-truncated { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; border-bottom: 1px dashed rgba(255,255,255,0.3); }
-
-
-        /* 統計區塊樣式 */
-        .stats-month-group { margin-bottom: 20px; animation: fadeIn 0.3s ease; }
-        .stats-month-title { color: var(--text-main); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 10px; display:flex; justify-content:space-between; font-weight:bold; }
-        .stats-item { background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); padding: 12px 15px; border-radius: 8px; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center; }
-        
-        /* 提示狀態樣式 */
-        .banner-warning { text-align:center; font-size:13px; font-weight:bold; color:var(--neon-orange); background:rgba(255,179,15,0.15); padding:8px; border-radius:6px; margin-bottom:10px; border:1px dashed var(--neon-orange); }
-        .banner-urgent { text-align:center; font-size:13px; font-weight:bold; color:var(--neon-pink); background:rgba(255,42,109,0.15); padding:8px; border-radius:6px; margin-bottom:10px; border:1px dashed var(--neon-pink); animation: alertPulse 1.5s infinite; }
-        .card-warning { border-color: var(--neon-orange) !important; box-shadow: 0 0 15px rgba(255,179,15,0.2) !important; }
-        .card-urgent { border-color: var(--neon-pink) !important; box-shadow: 0 0 15px rgba(255,42,109,0.3) !important; }
-        
-        /* 總覽表格特殊狀態 */
-        .table-warning { background-color: rgba(255,179,15,0.15); border-left: 2px solid var(--neon-orange); }
-        .table-urgent { border-left: 2px solid var(--neon-pink); animation: tablePulse 1.5s infinite; }
-
-
-        @keyframes alertPulse { 0% { opacity: 1; } 50% { opacity: 0.6; text-shadow: 0 0 10px rgba(255,42,109,0.8); } 100% { opacity: 1; } }
-        @keyframes tablePulse { 
-            0% { background-color: rgba(255,42,109,0.15); } 
-            50% { background-color: rgba(255,42,109,0.3); } 
-            100% { background-color: rgba(255,42,109,0.15); } 
-        }
+        .key { background: white; border: none; padding: 15px; font-size: 24px; font-weight: bold; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .key:active { background: #ccc; }
+        .key-action { background: #bbb; font-size: 18px; }
+        .key-close { background: var(--primary); color: white; grid-column: span 3; }
+       
     </style>
 </head>
 <body>
-    <div class="header">電子票證管家</div>
 
 
-    <!-- Tab: 我的卡片 -->
-    <div id="tab-cards" class="tab-content active-tab">
-        <button id="install-app-btn" class="btn-install" style="display: none;">📲 安裝為 APP</button>
-        <div id="last-backup-info" class="backup-notice"></div>
-        
-        <div class="overview-card" id="overview-container" style="display:none;">
-            <div onclick="toggleOverview()" style="cursor:pointer; text-align:center; font-size:16px; font-weight:bold; color:var(--text-main); letter-spacing:2px; display:flex; justify-content:center; align-items:center; gap:8px;">
-                📊 卡片資訊總覽 <span id="overview-toggle-icon" style="transition: transform 0.3s ease; font-size: 14px; color: var(--neon-cyan);">▼</span>
-            </div>
-            <div id="overview-content" style="margin-top: 12px;">
-                <table class="overview-table"><tbody id="overview-table-body"></tbody></table>
-            </div>
-        </div>
+    <header id="backup-status">✅ 最新自動備份：尚未備份</header>
 
 
-        <div class="toolbar" id="sort-toolbar" style="display:none; font-size:15px;">
-            <div style="color:var(--text-muted); white-space:nowrap;">排序方式：</div>
-            <select id="card-sort-select" class="form-control" style="flex:1;" onchange="renderCards()">
-                <option value="smart">🧠 智慧推薦 (優先登錄/儲值)</option>
-                <option value="custom">✋ 自訂排序 (拖曳總覽表格)</option>
-                <option value="default">🕒 預設排序 (新增順序)</option>
-                <option value="balance">💰 卡片餘額 (金額高低切換)</option>
-                <option value="type">🏷️ 卡片種類 (依票證類型)</option>
+    <div class="controls">
+        <div class="flex-row">
+            <select id="filter-bank" onchange="renderCards()">
+                <option value="All">全部銀行</option>
             </select>
-            <button id="reset-sort-btn" class="btn-action-alt" style="display:none; padding: 10px 14px; border-radius: 8px; cursor: pointer; white-space: nowrap; font-size: 15px; margin: 0;" onclick="resetCustomSort()" title="回復成預設新增順序">🔄 重置</button>
-            <button id="balance-sort-btn" class="btn-action-alt" style="display:none; padding: 10px 14px; border-radius: 8px; cursor: pointer; white-space: nowrap; font-size: 15px; margin: 0;" onclick="toggleBalanceSort()"></button>
+            <select id="filter-holder" onchange="renderCards()">
+                <option value="All">全部持卡人</option>
+                <option value="宏和">宏和</option>
+                <option value="瑋淨">瑋淨</option>
+            </select>
+            <button class="btn-outline" onclick="toggleView()" id="view-toggle-btn">📋 清單</button>
         </div>
-
-
-        <div id="cards-container"></div>
+        <div class="flex-row">
+            <button class="btn-primary" style="flex: 2;" onclick="openModal()">+ 新增卡片</button>
+            <button class="btn-outline" style="flex: 1;" onclick="openSettings()">⚙️ 設定</button>
+        </div>
     </div>
 
 
-    <!-- Tab: 歷史記錄 -->
-    <div id="tab-history" class="tab-content">
-        <h3 style="margin-top:0; color:var(--neon-cyan); letter-spacing:1px; font-size: 20px;">📜 歷史記錄與統計</h3>
+    <div id="card-container" class="list-view">
+        <!-- 卡片由 JS 生成 -->
+    </div>
+
+
+    <!-- 程式設定模態框 -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-header">
+            <h3 style="margin:0;">程式設定</h3>
+            <button class="btn-outline" style="color:white; border-color:white;" onclick="closeSettings()">關閉</button>
+        </div>
+        <div class="form-group" style="margin-top: 10px;">
+            <label>資料備份與匯出</label>
+            <div class="flex-row">
+                <button class="btn-outline" style="flex: 1;" onclick="exportData('json')">📥 匯出備份檔</button>
+                <button class="btn-outline" style="flex: 1;" onclick="exportData('txt')">📄 匯出文字檔</button>
+            </div>
+            <small style="color: #666; display: block; margin-top: 5px;">備份檔(JSON)用於系統還原；文字檔(TXT)用於瀏覽閱讀。</small>
+        </div>
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 15px;">
         <div class="form-group">
-            <select id="history-card-select" class="form-control" onchange="renderHistory()">
-                <!-- JS 動態產生選項 -->
+            <label>還原備份檔</label>
+            <input type="file" id="import-file" accept=".json" onchange="importData(event)" style="width: 100%;">
+            <small style="color: #E3000F; display: block; margin-top: 5px; font-weight: bold;">⚠️ 注意：還原將會完全覆蓋目前的卡片資料。</small>
+        </div>
+    </div>
+
+
+    <!-- 新增/編輯卡片表單 -->
+    <div id="form-modal" class="modal">
+        <div class="modal-header">
+            <h3 id="modal-title" style="margin:0;">新增卡片</h3>
+            <button class="btn-outline" style="color:white; border-color:white;" onclick="closeModal()">取消</button>
+        </div>
+        <input type="hidden" id="card-id">
+        <div class="form-group">
+            <label>卡片名稱 (自動辨識持卡人)</label>
+            <input type="text" id="card-name" placeholder="例如：宏和中信LINE Pay卡">
+        </div>
+        <div class="form-group">
+            <label>發卡銀行</label>
+            <select id="card-bank"></select>
+        </div>
+        <div class="form-group">
+            <label>發卡組織</label>
+            <select id="card-org">
+                <option value="VISA">VISA</option>
+                <option value="MASTER">Mastercard</option>
+                <option value="JCB">JCB</option>
             </select>
         </div>
-        <div id="history-container"></div>
-    </div>
-
-
-    <!-- Tab: 系統設定 -->
-    <div id="tab-settings" class="tab-content">
-        <div class="card-item" style="padding:20px;">
-            <h3 style="margin-top:0; color:var(--neon-cyan); font-size: 20px;">新增卡片</h3>
-            <div class="form-group"><label>卡片名稱</label><input type="text" id="new-card-name" class="form-control" placeholder="例如：科技通勤卡"></div>
-            <div class="form-group">
-                <label>卡片種類</label>
-                <select id="new-card-type" class="form-control" onchange="toggleJcbUI('new-card')">
-                    <option value="悠遊卡">悠遊卡</option><option value="一卡通">一卡通</option><option value="愛金卡">愛金卡</option>
-                </select>
-            </div>
-            <div class="form-group" id="new-card-jcb-group">
-                <label class="checkbox-label"><input type="checkbox" id="new-card-is-jcb" checked onchange="toggleJcbUI('new-card')"> 這是一張 JCB 悠遊卡 (啟用自動加值登錄)</label>
-            </div>
-            <div class="form-group"><label>信用卡號 (選填)</label><input type="text" id="new-card-credit" class="form-control" placeholder="例如：12345678..."></div>
-            <div class="form-group"><label>票證卡號 (選填)</label><input type="text" id="new-card-transit" class="form-control" placeholder="例如：0123456789"></div>
-            <div class="form-group"><label>初始餘額</label><input type="number" id="new-card-balance" class="form-control" placeholder="0"></div>
-            
-            <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 22px; border-left: 3px solid var(--neon-purple);">
-                <p style="font-size: 13px; color: var(--text-muted); margin-top: 0; margin-bottom: 10px;">👇 此處可補登建檔前的次數，系統會在「跨月/跨年」時自動將這些次數歸零重新計算。</p>
-                <div class="form-group" id="new-card-regcount-group" style="margin-bottom: 12px;">
-                    <label>本年度已登錄次數 (建檔前)</label><input type="number" id="new-card-regcount" class="form-control" placeholder="0" min="0">
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label>本月已儲值次數 (建檔前)</label><input type="number" id="new-card-topup-count" class="form-control" placeholder="0" min="0">
-                </div>
-            </div>
-            <button class="btn-block" onclick="addCard()">新增資料</button>
+        <div class="form-group">
+            <label>信用卡號 (16碼)</label>
+            <input type="text" id="card-no" readonly onclick="openKeypad('card-no')" placeholder="點擊使用專屬鍵盤輸入">
         </div>
-
-
-        <div class="card-item" style="margin-top: 20px; padding:20px;">
-            <h3 style="margin-top:0; color:var(--neon-purple); font-size: 20px;">系統與備份</h3>
-            <button class="btn-block btn-backup" onclick="exportBackup(false)">手動匯出備份檔 (.json)</button>
-            <button class="btn-block" style="background: linear-gradient(135deg, #2a9d8f, #20c997); color: #fff; box-shadow: 0 4px 15px rgba(32,201,151,0.3);" onclick="exportTxt()">📝 匯出卡片資訊 (.txt)</button>
-            <div class="form-group" style="margin-top: 20px;">
-                <label style="color:var(--neon-purple);">匯入備份檔 (將覆蓋現有資料)</label>
-                <input type="file" id="import-file" class="form-control" accept=".json" onchange="importBackup(event)" style="font-size:16px; padding:10px;">
+        <div class="form-group flex-row" style="padding: 0;">
+            <div style="flex:1; padding: 10px 15px;">
+                <label>到期日 (MMYY)</label>
+                <input type="text" id="card-expiry" readonly onclick="openKeypad('card-expiry')" placeholder="例如: 1228">
             </div>
+            <div style="flex:1; padding: 10px 15px;">
+                <label>驗證碼 (3碼)</label>
+                <input type="text" id="card-cvv" readonly onclick="openKeypad('card-cvv')" placeholder="例如: 123">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>電子票證類型</label>
+            <select id="card-etype">
+                <option value="無">無</option>
+                <option value="悠遊卡">悠遊卡</option>
+                <option value="一卡通">一卡通</option>
+                <option value="iCash">iCash</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>電子票證號碼 (16碼)</label>
+            <input type="text" id="card-eticket" readonly onclick="openKeypad('card-eticket')" placeholder="若無可留白">
+        </div>
+        <div class="form-group flex-row">
+            <button class="btn-primary" style="flex:1;" onclick="saveCard()">儲存並自動備份</button>
+            <button id="btn-delete" class="btn-danger" style="display:none;" onclick="deleteCard()">刪除</button>
         </div>
     </div>
 
 
-    <!-- Navigation -->
-    <div class="bottom-nav">
-        <button class="nav-btn active" onclick="switchTab('cards', this)"><div class="nav-icon">💳</div><span>我的卡片</span></button>
-        <button class="nav-btn" onclick="switchTab('history', this)"><div class="nav-icon">📊</div><span>歷史記錄</span></button>
-        <button class="nav-btn" onclick="switchTab('settings', this)"><div class="nav-icon">⚙️</div><span>系統設定</span></button>
+    <!-- 自訂螢幕數字鍵盤 -->
+    <div id="virtual-keypad">
+        <button class="key" onclick="keyPress('1')">1</button>
+        <button class="key" onclick="keyPress('2')">2</button>
+        <button class="key" onclick="keyPress('3')">3</button>
+        <button class="key" onclick="keyPress('4')">4</button>
+        <button class="key" onclick="keyPress('5')">5</button>
+        <button class="key" onclick="keyPress('6')">6</button>
+        <button class="key" onclick="keyPress('7')">7</button>
+        <button class="key" onclick="keyPress('8')">8</button>
+        <button class="key" onclick="keyPress('9')">9</button>
+        <button class="key key-action" onclick="keyPress('clear')">清除</button>
+        <button class="key" onclick="keyPress('0')">0</button>
+        <button class="key key-action" onclick="keyPress('del')">刪除</button>
+        <button class="key key-close" onclick="closeKeypad()">完成輸入</button>
     </div>
 
 
-    <!-- Modals -->
-    <div class="modal-overlay" id="action-modal">
-        <div class="modal">
-            <h3 id="modal-title">輸入扣款</h3>
-            <div class="form-group"><label>扣款金額</label><input type="number" id="modal-amount" class="form-control" placeholder="請輸入金額"></div>
-            <div class="form-group"><label>消費明細 (選填)</label><input type="text" id="modal-memo" class="form-control" placeholder="例如：超商買咖啡"></div>
-            <div class="modal-buttons">
-                <button class="btn-cancel" onclick="closeModal()">取消</button>
-                <button class="btn-block" style="margin-bottom:0; flex:1 1 40%;" onclick="submitAction()">確認執行</button>
-            </div>
-        </div>
-    </div>
+<script>
+    const BANKS = ["中國信託", "國泰世華", "台新", "永豐", "遠東", "華南", "聯邦", "樂天", "富邦", "玉山", "彰化", "元大", "新光", "凱基", "第一", "星展"];
+    let cards = JSON.parse(localStorage.getItem('creditCards')) || [];
+    let isListView = true;
+    let activeInputId = null;
 
 
-    <div class="modal-overlay" id="edit-modal">
-        <div class="modal">
-            <h3>編輯記錄</h3><input type="hidden" id="edit-tx-id">
-            <div class="form-group"><label>日期時間</label><input type="datetime-local" id="edit-datetime" class="form-control"></div>
-            <div class="form-group"><label>金額</label><input type="number" id="edit-amount" class="form-control"></div>
-            <div class="form-group"><label>消費明細</label><input type="text" id="edit-memo" class="form-control"></div>
-            <div class="modal-buttons">
-                <button class="btn-cancel" onclick="closeModal('edit-modal')">取消</button>
-                <button class="btn-block" style="margin-bottom:0; flex:1 1 40%;" onclick="submitEdit()">儲存變更</button>
-            </div>
-        </div>
-    </div>
-
-
-    <div class="modal-overlay" id="edit-card-modal">
-        <div class="modal">
-            <h3>編輯卡片資訊</h3><input type="hidden" id="edit-card-id">
-            <div class="form-group"><label>卡片名稱</label><input type="text" id="edit-card-name" class="form-control"></div>
-            <div class="form-group"><label>實際餘額 (校正)</label><input type="number" id="edit-card-balance" class="form-control"><p style="font-size:13px; color:var(--text-muted); margin-top:6px;">自動新增「校正」紀錄以平衡帳目</p></div>
-            <div class="form-group"><label>卡片種類</label><select id="edit-card-type" class="form-control" onchange="toggleJcbUI('edit-card')"><option value="悠遊卡">悠遊卡</option><option value="一卡通">一卡通</option><option value="愛金卡">愛金卡</option></select></div>
-            <div class="form-group" id="edit-card-jcb-group"><label class="checkbox-label"><input type="checkbox" id="edit-card-is-jcb" onchange="toggleJcbUI('edit-card')"> 這是一張 JCB 悠遊卡</label></div>
-            <div class="form-group"><label>信用卡號 (選填)</label><input type="text" id="edit-card-credit" class="form-control"></div>
-            <div class="form-group"><label>票證卡號 (選填)</label><input type="text" id="edit-card-transit" class="form-control"></div>
-            
-            <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 22px; border-left: 3px solid var(--neon-purple);">
-                <div class="form-group" id="edit-card-regcount-group" style="margin-bottom: 12px;">
-                    <label>本年度已登錄次數 (建檔前)</label><input type="number" id="edit-card-regcount" class="form-control" min="0">
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label>本月已儲值次數 (建檔前)</label><input type="number" id="edit-card-topup-count" class="form-control" min="0">
-                </div>
-            </div>
-            
-            <div class="modal-buttons">
-                <button class="btn-cancel" onclick="closeModal('edit-card-modal')">取消</button>
-                <button class="btn-block" style="margin-bottom:0; flex:1 1 40%;" onclick="submitEditCard()">儲存變更</button>
-                <button class="btn-block btn-danger-alt" onclick="deleteCardFromEdit()">🗑️ 刪除此卡片</button>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- 提示視窗 -->
-    <div class="modal-overlay" id="message-modal" style="z-index: 30;">
-        <div class="modal" style="text-align: center; max-width: 300px;">
-            <h3 style="color: var(--neon-cyan); font-size: 18px; border: none; margin-bottom: 10px;">卡片完整名稱</h3>
-            <p id="message-modal-content" style="font-size: 16px; margin-bottom: 25px; word-break: break-all; color: white;"></p>
-            <button class="btn-block" style="margin-bottom:0;" onclick="closeModal('message-modal')">關閉</button>
-        </div>
-    </div>
-
-
-    <!-- 啟動提醒視窗 -->
-    <div class="modal-overlay" id="startup-reminder-modal" style="z-index: 50;">
-        <div class="modal" style="text-align: center; max-width: 320px; border-color: var(--neon-orange); box-shadow: 0 0 30px rgba(255,179,15,0.2);">
-            <h3 style="color: var(--neon-orange); font-size: 20px; border: none; margin-bottom: 10px;">💡 儲值提醒</h3>
-            <p style="font-size: 15px; margin-bottom: 15px; color: var(--text-main);">以下卡片本月已登錄，但尚未有儲值紀錄，請記得完成儲值以獲取回饋：</p>
-            <div id="startup-reminder-list" style="max-height: 200px; overflow-y: auto; margin-bottom: 20px;"></div>
-            <button class="btn-block" style="margin-bottom:0; background: linear-gradient(135deg, #F39800, var(--neon-orange)); color: #fff; box-shadow: 0 4px 15px rgba(255,179,15,0.3);" onclick="closeModal('startup-reminder-modal')">我知道了</button>
-        </div>
-    </div>
-
-
-    <!-- 離開程式確認視窗 -->
-    <div class="modal-overlay" id="exit-modal" style="z-index: 60;">
-        <div class="modal" style="text-align: center; max-width: 300px; border-color: var(--neon-pink); box-shadow: 0 0 30px rgba(255,42,109,0.2);">
-            <h3 style="color: var(--neon-pink); font-size: 20px; border: none; margin-bottom: 5px;">離開應用程式</h3>
-            <p style="font-size: 16px; margin-bottom: 25px; color: var(--text-main);">確定要離開電子票證管家嗎？</p>
-            <div class="modal-buttons">
-                <button class="btn-cancel" onclick="closeModal('exit-modal')">取消</button>
-                <button class="btn-block btn-sm-deduct" style="margin-bottom:0; flex:1 1 40%;" onclick="confirmExitApp()">確定離開</button>
-            </div>
-        </div>
-    </div>
-
-
-    <script>
-        // --- 核心變數與初始化 ---
-        const DB_KEY = 'TransitApp_Data';
-        let appData = { cards: [], transactions: [], customOrder: [], unsavedCount: 0, isOverviewCollapsed: false };
-        let deferredPrompt, currentAction = { cardId: null, type: null };
-        let allowAppExit = false; 
-
-
-        function init() {
-            setupPWA();
-            loadData();
-            
-            history.pushState('app-trap', '', '');
-
-
-            if (!appData.sortPreference) appData.sortPreference = 'default';
-            if (!appData.balanceSortDir) appData.balanceSortDir = 'desc'; 
-            
-            document.getElementById('card-sort-select').value = appData.sortPreference;
-            toggleJcbUI('new-card');
-            updateHistorySelect();
-            renderCards();
-            renderHistory();
-            
-            const installBtn = document.getElementById('install-app-btn');
-            window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; installBtn.style.display = 'block'; });
-            installBtn.addEventListener('click', async () => { if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; }});
-            window.addEventListener('appinstalled', () => { deferredPrompt = null; installBtn.style.display = 'none'; });
-
-
-            // 啟動時檢查是否需要跳出儲值提醒
-            checkRemindersOnStartup();
-        }
-
-
-        // --- 返回鍵攔截邏輯 ---
-        window.addEventListener('popstate', function(e) {
-            if (allowAppExit) return;
-            history.pushState('app-trap', '', ''); 
-
-
-            // 1. 檢查是否有彈出視窗
-            const modals = ['startup-reminder-modal', 'exit-modal', 'message-modal', 'action-modal', 'edit-modal', 'edit-card-modal'];
-            let didCloseModal = false;
-            for (let id of modals) {
-                let el = document.getElementById(id);
-                if (el && el.style.display === 'flex') {
-                    closeModal(id);
-                    didCloseModal = true;
-                    break;
-                }
-            }
-            if (didCloseModal) return;
-
-
-            // 2. 檢查是否在「我的卡片」以外的分頁
-            const cardsTab = document.getElementById('tab-cards');
-            if (!cardsTab.classList.contains('active-tab')) {
-                const historyTab = document.getElementById('tab-history');
-                if (historyTab.classList.contains('active-tab')) {
-                    const selId = document.getElementById('history-card-select').value;
-                    // Layer 3 (歷史記錄) -> Layer 2 (退回專屬卡片的位置)
-                    if (selId && selId !== 'all' && !selId.startsWith('stats-')) {
-                        switchTab('cards', document.querySelectorAll('.nav-btn')[0], true); // true: 避免馬上捲到頂部
-                        setTimeout(() => scrollToCard(selId), 50); // 平滑捲動回第二層
-                        return;
-                    }
-                }
-                
-                // 其他分頁 (如設定) -> Layer 1 (卡片總覽第一層)
-                switchTab('cards', document.querySelectorAll('.nav-btn')[0]);
-                window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
-                return;
-            }
-
-
-            // 3. 檢查是否處於 Layer 2 (畫面往下捲動看卡片) -> Layer 1 (返回頂端卡片總覽)
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-            if (scrollTop > 5) {
-                window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
-                return;
-            }
-
-
-            // 4. 第一層 (畫面在最頂端且無任何視窗) -> 詢問離開
-            document.getElementById('exit-modal').style.display = 'flex';
+    // 初始化
+    window.onload = () => {
+        const bankSelect = document.getElementById('card-bank');
+        const filterBank = document.getElementById('filter-bank');
+        BANKS.forEach(bank => {
+            bankSelect.innerHTML += `<option value="${bank}">${bank}</option>`;
+            filterBank.innerHTML += `<option value="${bank}">${bank}</option>`;
         });
+        updateBackupStatus(localStorage.getItem('lastBackupTime'));
+        renderCards();
+    };
 
 
-        function confirmExitApp() {
-            allowAppExit = true; 
-            closeModal('exit-modal');
-            history.go(-2);
+    // 格式化工具
+    const formatCC = (num) => num ? num.replace(/(.{4})/g, '$1-').replace(/-$/, '') : '';
+    const formatExpiryDisplay = (num) => num && num.length === 4 ? `${num.substring(0,2)}/${num.substring(2,4)}` : num;
+    const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+    const getTimestampStr = () => {
+        const d = new Date();
+        const pad = (n) => n.toString().padStart(2, '0');
+        return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+    };
+
+
+    // 自動辨識持卡人
+    const detectHolder = (name) => {
+        if (name.includes('宏和')) return '宏和';
+        if (name.includes('瑋淨')) return '瑋淨';
+        return '其他';
+    };
+
+
+    // 渲染卡片
+    function renderCards() {
+        const container = document.getElementById('card-container');
+        const filterB = document.getElementById('filter-bank').value;
+        const filterH = document.getElementById('filter-holder').value;
+        container.innerHTML = '';
+
+
+        let filtered = cards.filter(c =>
+            (filterB === 'All' || c.bank === filterB) &&
+            (filterH === 'All' || c.holder === filterH)
+        );
+
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<p style="text-align:center; margin-top:50px;">目前沒有相符的卡片</p>';
+            return;
         }
 
 
-        const loadData = () => { 
-            const data = localStorage.getItem(DB_KEY); 
-            if (data) {
-                appData = { ...appData, ...JSON.parse(data) }; 
-                if (appData.sortPreference === 'balance-desc') { appData.sortPreference = 'balance'; appData.balanceSortDir = 'desc'; }
-                else if (appData.sortPreference === 'balance-asc') { appData.sortPreference = 'balance'; appData.balanceSortDir = 'asc'; }
-                
-                // 自動補齊舊資料的歸零週期紀錄
-                const now = new Date();
-                const currentYear = now.getFullYear();
-                const currentMonthKey = `${currentYear}-${now.getMonth()}`;
-                appData.cards.forEach(c => {
-                    if (c.initRegs > 0 && !c.initRegsYear) c.initRegsYear = currentYear;
-                    if (c.initTopups > 0 && !c.initTopupsMonth) c.initTopupsMonth = currentMonthKey;
-                });
+        container.className = isListView ? 'list-view' : 'stack-view';
+
+
+        filtered.forEach((card, index) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'card-wrapper';
+            if (!isListView) {
+                wrapper.style.top = `${index * 45}px`;
+                wrapper.style.zIndex = index;
             }
-        };
-        const saveData = () => { localStorage.setItem(DB_KEY, JSON.stringify(appData)); updateHistorySelect(); renderHistory(); };
-        const triggerAutoBackup = () => { appData.unsavedCount = (appData.unsavedCount || 0) + 1; saveData(); if (appData.unsavedCount >= 1) exportBackup(true); };
 
 
-        // --- 工具函式 ---
-        const pad = n => n.toString().padStart(2, '0');
-        const formatDate = (dateObj, inputFormat = false) => {
-            const d = new Date(dateObj), y = d.getFullYear(), m = pad(d.getMonth() + 1), dt = pad(d.getDate()), h = pad(d.getHours()), mn = pad(d.getMinutes());
-            return inputFormat ? `${y}-${m}-${dt}T${h}:${mn}` : `${y}/${m}/${dt} ${h}:${mn}`;
-        };
-        const formatCardNumber = str => str ? String(str).replace(/[\s-]/g, '').replace(/(.{4})(?!$)/g, '$1-') : '無';
-        
-        // 取得「真實發生」的交易次數。 checkMonth=false為查詢「今年」，checkMonth=true為查詢「今年且本月」
-        const getTxCount = (cardId, type, checkMonth = false) => {
-            const y = new Date().getFullYear(), m = new Date().getMonth();
-            return appData.transactions.filter(t => {
-                const d = new Date(t.timestamp);
-                return t.cardId === cardId && t.type === type && d.getFullYear() === y && (!checkMonth || d.getMonth() === m);
-            }).length;
-        };
-
-
-        const addTx = (cardId, type, amount, memo, idSuffix = '', timeOffset = 0) => {
-            appData.transactions.push({ id: Date.now() + idSuffix, cardId, timestamp: new Date(Date.now() + timeOffset).toISOString(), type, amount, memo });
-        };
-
-
-        function getCustomOrder() {
-            appData.customOrder = appData.customOrder || [];
-            const existingIds = new Set(appData.customOrder), currentIds = new Set(appData.cards.map(c => c.id));
-            appData.cards.forEach(c => { if (!existingIds.has(c.id)) appData.customOrder.push(c.id); });
-            return appData.customOrder = appData.customOrder.filter(id => currentIds.has(id));
-        }
-
-
-        // --- UI 控制 ---
-        function toggleJcbUI(prefix) {
-            const isYoyo = document.getElementById(`${prefix}-type`).value === '悠遊卡';
-            document.getElementById(`${prefix}-jcb-group`).style.display = isYoyo ? 'block' : 'none';
-            document.getElementById(`${prefix}-regcount-group`).style.display = (isYoyo && document.getElementById(`${prefix}-is-jcb`).checked) ? 'block' : 'none';
-        }
-
-
-        function toggleStar(e, id) { e.stopPropagation(); const c = appData.cards.find(c => c.id === id); if (c) { c.isStarred = !c.isStarred; saveData(); renderCards(); triggerAutoBackup(); } }
-        function scrollToCard(id) { const el = document.getElementById('card-view-' + id); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.boxShadow = '0 0 20px 5px var(--neon-cyan)'; setTimeout(() => el.style.boxShadow = '', 1500); } }
-        
-        function switchTab(id, btn, preventScroll = false) { 
-            document.querySelectorAll('.tab-content, .nav-btn').forEach(el => el.classList.remove('active-tab', 'active')); 
-            document.getElementById(`tab-${id}`).classList.add('active-tab'); 
-            if(btn) btn.classList.add('active'); 
-            if(id === 'cards' && !preventScroll) window.scrollTo(0,0); 
-        }
-        
-        function closeModal(id = 'action-modal') { document.getElementById(id).style.display = 'none'; }
-        
-        function showMessageModal(text) {
-            document.getElementById('message-modal-content').innerText = text;
-            document.getElementById('message-modal').style.display = 'flex';
-        }
-
-
-        function toggleOverview() {
-            appData.isOverviewCollapsed = !appData.isOverviewCollapsed;
-            saveData();
-            
-            const content = document.getElementById('overview-content');
-            const icon = document.getElementById('overview-toggle-icon');
-            
-            if (appData.isOverviewCollapsed) {
-                content.style.display = 'none';
-                icon.style.transform = 'rotate(-90deg)';
-            } else {
-                content.style.display = 'block';
-                icon.style.transform = 'rotate(0deg)';
-            }
-        }
-
-
-        function resetCustomSort() {
-            if (confirm('確定要將自訂排序回復成「預設新增順序」嗎？')) {
-                appData.customOrder = []; 
-                getCustomOrder(); 
-                saveData();
-                renderCards();
-                triggerAutoBackup();
-            }
-        }
-        
-        function toggleBalanceSort() {
-            appData.balanceSortDir = appData.balanceSortDir === 'desc' ? 'asc' : 'desc';
-            saveData();
-            renderCards();
-            triggerAutoBackup();
-        }
-
-
-        // --- 核心功能 ---
-        function checkRemindersOnStartup() {
-            // 利用 sessionStorage 讓每次開啟 App 的 session 只彈出一次，避免操作中途重整網頁一直被打擾
-            if (sessionStorage.getItem('startupReminderShown')) return; 
-            
-            const now = new Date();
-            const currentYear = now.getFullYear();
-            const currentMonthKey = `${currentYear}-${now.getMonth()}`;
-            let reminderCards = [];
-
-
-            appData.cards.forEach(c => {
-                const effectiveInitTopups = (c.initTopupsMonth === currentMonthKey) ? (c.initTopups || 0) : 0;
-                const realThisMonthTopups = getTxCount(c.id, '儲值', true);
-                const realThisMonthRegs = getTxCount(c.id, '登錄', true);
-                
-                const displayTopups = effectiveInitTopups + realThisMonthTopups;
-                // 只有「本月真實有登錄」且「尚未有儲值紀錄」才需要提醒
-                const needsTopup = realThisMonthRegs > 0 && displayTopups === 0;
-
-
-                if (needsTopup) {
-                    reminderCards.push(c);
-                }
-            });
-
-
-            if (reminderCards.length > 0) {
-                const listHtml = reminderCards.map(c => `
-                    <div style="background:rgba(255,179,15,0.15); border:1px solid rgba(255,179,15,0.3); border-left:4px solid var(--neon-orange); padding:10px 14px; margin-bottom:10px; border-radius:6px; text-align:left; color:#fff; font-weight:bold; letter-spacing: 1px;">
-                        💳 ${c.name}
+            const eTicketHtml = card.etype !== '無' ?
+                `<div class="card-row">
+                    <div>
+                        <span class="card-label">${card.etype}：</span>
+                        <span class="card-value">${formatCC(card.eticket)}</span>
                     </div>
-                `).join('');
-                
-                document.getElementById('startup-reminder-list').innerHTML = listHtml;
-                document.getElementById('startup-reminder-modal').style.display = 'flex';
-                sessionStorage.setItem('startupReminderShown', 'true');
-            }
-        }
+                    <button class="copy-btn" onclick="copyText('${card.eticket}', event)">複製</button>
+                </div>` : '';
 
 
-        function addCard() {
-            const name = document.getElementById('new-card-name').value.trim(), type = document.getElementById('new-card-type').value;
-            if (!name) return alert('請輸入卡片名稱');
-            const isJCB = type === '悠遊卡' ? document.getElementById('new-card-is-jcb').checked : false;
-            const cardId = Date.now().toString();
-            const now = new Date();
-            
-            appData.cards.push({
-                id: cardId, type, isJCB, isStarred: false, name,
-                balance: parseInt(document.getElementById('new-card-balance').value) || 0,
-                creditNum: document.getElementById('new-card-credit').value.trim(),
-                transitNum: document.getElementById('new-card-transit').value.trim(),
-                initRegs: parseInt(document.getElementById('new-card-regcount').value) || 0,
-                initTopups: parseInt(document.getElementById('new-card-topup-count').value) || 0,
-                initRegsYear: now.getFullYear(), // 鎖定輸入時的年份
-                initTopupsMonth: `${now.getFullYear()}-${now.getMonth()}` // 鎖定輸入時的月份
-            });
-            getCustomOrder();
-            
-            saveData(); renderCards(); triggerAutoBackup();
-            ['name', 'credit', 'transit', 'balance', 'topup-count', 'regcount'].forEach(f => document.getElementById(`new-card-${f}`).value = '');
-            document.getElementById('new-card-type').value = '悠遊卡'; document.getElementById('new-card-is-jcb').checked = true; toggleJcbUI('new-card');
-            switchTab('cards', document.querySelectorAll('.nav-btn')[0]);
-        }
-
-
-        function openEditCardModal(id) {
-            const c = appData.cards.find(c => c.id === id); if (!c) return;
-            const now = new Date();
-            const currentYear = now.getFullYear();
-            const currentMonthKey = `${currentYear}-${now.getMonth()}`;
-            
-            // 取出目前仍然有效的初始值
-            const effectiveInitRegs = (c.initRegsYear === currentYear) ? (c.initRegs || 0) : 0;
-            const effectiveInitTopups = (c.initTopupsMonth === currentMonthKey) ? (c.initTopups || 0) : 0;
-
-
-            document.getElementById('edit-card-id').value = c.id;
-            ['name', 'balance', 'type', 'credit', 'transit'].forEach(f => document.getElementById(`edit-card-${f}`).value = c[`${f}Num`] || c[f] || '');
-            document.getElementById('edit-card-is-jcb').checked = c.isJCB !== false;
-            document.getElementById('edit-card-regcount').value = effectiveInitRegs;
-            document.getElementById('edit-card-topup-count').value = effectiveInitTopups;
-            toggleJcbUI('edit-card'); document.getElementById('edit-card-modal').style.display = 'flex';
-        }
-
-
-        function submitEditCard() {
-            const id = document.getElementById('edit-card-id').value, c = appData.cards.find(c => c.id === id);
-            if (!c || !document.getElementById('edit-card-name').value.trim()) return alert('請輸入卡片名稱');
-            
-            c.name = document.getElementById('edit-card-name').value.trim();
-            c.type = document.getElementById('edit-card-type').value;
-            c.isJCB = c.type === '悠遊卡' ? document.getElementById('edit-card-is-jcb').checked : false;
-            c.creditNum = document.getElementById('edit-card-credit').value.trim();
-            c.transitNum = document.getElementById('edit-card-transit').value.trim();
-
-
-            const now = new Date();
-            const newRegs = parseInt(document.getElementById('edit-card-regcount').value) || 0;
-            const newTopups = parseInt(document.getElementById('edit-card-topup-count').value) || 0;
-            
-            // 如果使用者改了數值，就更新鎖定的年月以確保生效
-            if (c.initRegs !== newRegs) { c.initRegs = newRegs; c.initRegsYear = now.getFullYear(); }
-            if (c.initTopups !== newTopups) { c.initTopups = newTopups; c.initTopupsMonth = `${now.getFullYear()}-${now.getMonth()}`; }
-
-
-            const newBal = parseInt(document.getElementById('edit-card-balance').value);
-            if (!isNaN(newBal) && newBal >= 0 && newBal !== c.balance) { addTx(c.id, '校正', newBal - c.balance, '系統手動校正餘額'); c.balance = newBal; }
-            
-            saveData(); renderCards(); triggerAutoBackup(); closeModal('edit-card-modal');
-        }
-
-
-        function deleteCardFromEdit() {
-            const id = document.getElementById('edit-card-id').value, c = appData.cards.find(c => c.id === id);
-            if (!c || !confirm(`確定刪除「${c.name}」與所有紀錄且無法復原？`)) return;
-            appData.transactions = appData.transactions.filter(t => t.cardId !== id);
-            appData.cards = appData.cards.filter(c => c.id !== id);
-            getCustomOrder(); saveData(); renderCards(); triggerAutoBackup(); closeModal('edit-card-modal');
-            if(document.getElementById('history-card-select').value === id) { document.getElementById('history-card-select').value = 'all'; renderHistory(); }
-        }
-
-
-        function openActionModal(id, type) {
-            currentAction = { cardId: id, type };
-            if (type === '登錄') {
-                // 檢查該卡本年度總登錄次數
-                const c = appData.cards.find(card => card.id === id);
-                const currentYear = new Date().getFullYear();
-                const effectiveInitRegs = (c.initRegsYear === currentYear) ? (c.initRegs || 0) : 0;
-                const realThisYearRegs = getTxCount(id, '登錄', false);
-                const displayRegs = effectiveInitRegs + realThisYearRegs;
-                
-                if (displayRegs >= 3) return alert('⛔ 本年度登錄已達 3 次上限！');
-                if (getTxCount(id, '登錄', true) > 0) return alert('⛔ 本月已登錄過！每月限登錄1次。');
-                
-                if (confirm('確認新增今日登錄記錄？')) executeAction(id, type, 0, '');
-            } else {
-                document.getElementById('modal-title').innerText = '執行扣款';
-                document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = '';
-                document.getElementById('action-modal').style.display = 'flex'; setTimeout(()=>document.getElementById('modal-amount').focus(), 100);
-            }
-        }
-
-
-        function submitAction() {
-            const amt = parseInt(document.getElementById('modal-amount').value);
-            if (!amt || amt <= 0) return alert('請輸入有效金額');
-            executeAction(currentAction.cardId, currentAction.type, amt, document.getElementById('modal-memo').value.trim());
-            closeModal();
-        }
-
-
-        function executeAction(id, type, amount, memo) {
-            const c = appData.cards.find(c => c.id === id); if (!c) return;
-            if (type === '扣款' && c.balance < amount) {
-                const topupAmt = Math.ceil((amount - c.balance) / 500) * 500;
-                c.balance += topupAmt; addTx(id, '儲值', topupAmt, '餘額不足，自動儲值', '_topup', -1);
-            }
-            if (type === '扣款') c.balance -= amount;
-            addTx(id, type, amount, memo);
-            saveData(); renderCards(); triggerAutoBackup();
-        }
-
-
-        function openEditModal(id) {
-            const t = appData.transactions.find(t => t.id === id); if(!t) return;
-            document.getElementById('edit-tx-id').value = t.id;
-            document.getElementById('edit-datetime').value = formatDate(t.timestamp, true);
-            document.getElementById('edit-amount').value = t.amount || 0;
-            document.getElementById('edit-amount').disabled = ['登錄', '校正'].includes(t.type);
-            document.getElementById('edit-memo').value = t.memo || '';
-            document.getElementById('edit-modal').style.display = 'flex';
-        }
-
-
-        function submitEdit() {
-            const t = appData.transactions.find(t => t.id === document.getElementById('edit-tx-id').value), c = appData.cards.find(c => c.id === t.cardId);
-            const amt = parseInt(document.getElementById('edit-amount').value) || 0, dt = document.getElementById('edit-datetime').value;
-            if (!dt || (!['登錄', '校正'].includes(t.type) && amt < 0)) return alert('輸入無效');
-            
-            if (c) {
-                if (t.type === '扣款') c.balance += t.amount; else if (['儲值', '校正'].includes(t.type)) c.balance -= t.amount;
-                if (t.type === '扣款') {
-                    if (c.balance < amt) { const topup = Math.ceil((amt - c.balance)/500)*500; c.balance += topup; addTx(c.id, '儲值', topup, '自動儲值', '_topup_edit'); }
-                    c.balance -= amt;
-                } else if (t.type === '儲值') c.balance += amt;
-            }
-            t.amount = amt; t.timestamp = new Date(dt).toISOString(); t.memo = document.getElementById('edit-memo').value.trim();
-            saveData(); renderCards(); triggerAutoBackup(); closeModal('edit-modal');
-        }
-
-
-        function deleteTransaction(id) {
-            const idx = appData.transactions.findIndex(t => t.id === id); if (idx === -1 || !confirm('確定刪除此記錄？(系統將自動回復餘額)')) return;
-            const t = appData.transactions[idx], c = appData.cards.find(c => c.id === t.cardId);
-            if (c) { if (t.type === '扣款') c.balance += t.amount; else if (['儲值', '校正'].includes(t.type)) c.balance -= t.amount; }
-            appData.transactions.splice(idx, 1); saveData(); renderCards(); triggerAutoBackup();
-        }
-
-
-        // --- 渲染 ---
-        function updateHistorySelect() {
-            const sel = document.getElementById('history-card-select'), val = sel.value;
-            let optionsHtml = `
-                <optgroup label="統計視圖">
-                    <option value="all">📜 所有最新紀錄</option>
-                    <option value="stats-reg">📊 登錄次數統計</option>
-                    <option value="stats-topup">📊 儲值次數統計</option>
-                </optgroup>
-                <optgroup label="個別卡片">
-            `;
-            optionsHtml += appData.cards.map(c => `<option value="${c.id}">${c.name} (${c.type})</option>`).join('');
-            optionsHtml += `</optgroup>`;
-            
-            sel.innerHTML = optionsHtml;
-            
-            // 嘗試保留原本的選擇
-            if(val === 'all' || val === 'stats-reg' || val === 'stats-topup' || appData.cards.find(c => c.id === val)) {
-                sel.value = val;
-            } else {
-                sel.value = 'all';
-            }
-        }
-        
-        function viewHistory(id) { document.getElementById('history-card-select').value = id; switchTab('history', document.querySelectorAll('.nav-btn')[1]); renderHistory(); }
-
-
-        function renderCards() {
-            const backupInfo = document.getElementById('last-backup-info'), cont = document.getElementById('cards-container'), over = document.getElementById('overview-container'), tool = document.getElementById('sort-toolbar');
-            backupInfo.innerHTML = appData.lastBackupTime ? `✅ 系統已於 <b>${formatDate(appData.lastBackupTime)}</b> 完成本機備份下載` : '';
-            backupInfo.style.display = appData.lastBackupTime ? 'block' : 'none';
-            
-            if (!appData.cards.length) { over.style.display = 'none'; tool.style.display = 'none'; cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:16px; margin-top:50px;">無卡片紀錄，請至系統設定建立</p>'; return; }
-            over.style.display = 'block'; tool.style.display = 'flex';
-            
-            if (appData.isOverviewCollapsed) {
-                document.getElementById('overview-content').style.display = 'none';
-                document.getElementById('overview-toggle-icon').style.transform = 'rotate(-90deg)';
-            } else {
-                document.getElementById('overview-content').style.display = 'block';
-                document.getElementById('overview-toggle-icon').style.transform = 'rotate(0deg)';
-            }
-
-
-            const sortType = document.getElementById('card-sort-select').value;
-            if (appData.sortPreference !== sortType) { 
-                appData.sortPreference = sortType; 
-                localStorage.setItem(DB_KEY, JSON.stringify(appData)); 
-            }
-            
-            document.getElementById('reset-sort-btn').style.display = sortType === 'custom' ? 'block' : 'none';
-            
-            const balBtn = document.getElementById('balance-sort-btn');
-            if (balBtn) {
-                balBtn.style.display = sortType === 'balance' ? 'block' : 'none';
-                if (sortType === 'balance') balBtn.innerHTML = appData.balanceSortDir === 'asc' ? '⬆️ 低到高' : '⬇️ 高到低';
-            }
-
-
-            let sorted = [...appData.cards];
-            const now = new Date();
-            const currentYear = now.getFullYear();
-            const currentMonthKey = `${currentYear}-${now.getMonth()}`;
-
-
-            // 計算總次數輔助排序
-            const getSortRegs = id => { 
-                const c = appData.cards.find(card => card.id===id); 
-                const effectiveInitRegs = (c.initRegsYear === currentYear) ? (c.initRegs || 0) : 0;
-                return effectiveInitRegs + getTxCount(id, '登錄', false); 
-            };
-            
-            if (sortType === 'smart') sorted.sort((a,b) => { const rA = (a.type === '悠遊卡' && a.isJCB !== false) ? getSortRegs(a.id) : 999, rB = (b.type === '悠遊卡' && b.isJCB !== false) ? getSortRegs(b.id) : 999; return rA !== rB ? rA - rB : a.balance - b.balance; });
-            else if (sortType === 'balance') {
-                if (appData.balanceSortDir === 'desc') sorted.sort((a,b) => b.balance - a.balance);
-                else sorted.sort((a,b) => a.balance - b.balance);
-            }
-            else if (sortType === 'type') sorted.sort((a,b) => a.type.localeCompare(b.type));
-            else if (sortType === 'custom') { const o = getCustomOrder(); sorted.sort((a,b) => o.indexOf(a.id) - o.indexOf(b.id)); }
-
-
-            const viewData = sorted.map(c => {
-                const isJCB = c.type === '悠遊卡' && c.isJCB !== false;
-                const isTruncated = c.name.length > 10;
-                const displayName = isTruncated ? c.name.substring(0, 10) + '...' : c.name;
-                
-                // --- 計算目前有效的初始值 ---
-                const effectiveInitRegs = (c.initRegsYear === currentYear) ? (c.initRegs || 0) : 0;
-                const effectiveInitTopups = (c.initTopupsMonth === currentMonthKey) ? (c.initTopups || 0) : 0;
-
-
-                // --- 取得真實交易發生的次數 ---
-                const realThisYearRegs = getTxCount(c.id, '登錄', false);
-                const realThisMonthTopups = getTxCount(c.id, '儲值', true);
-                const realThisMonthRegs = getTxCount(c.id, '登錄', true);
-                
-                // --- 合計顯示次數 ---
-                const displayTopups = effectiveInitTopups + realThisMonthTopups;
-                const displayRegs = isJCB ? (effectiveInitRegs + realThisYearRegs) : null;
-                
-                // --- 提示邏輯 ---
-                const needsTopup = realThisMonthRegs > 0 && displayTopups === 0;
-                const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-                const isUrgent = needsTopup && (daysInMonth - now.getDate() <= 3);
-                
-                return { ...c, isJCB, displayTopups, displayRegs, needsTopup, isUrgent, cls: c.type === '悠遊卡' ? 'type-easy' : (c.type === '一卡通' ? 'type-ipass' : 'type-icash'), starCls: c.isStarred ? 'active' : '', cred: formatCardNumber(c.creditNum), trans: formatCardNumber(c.transitNum), displayName, isTruncated };
-            });
-
-
-            document.getElementById('overview-table-body').innerHTML = `<tr><th>名稱</th><th style="width:23%;text-align:right;">餘額</th><th style="width:23%;text-align:center;">本月儲值</th><th style="width:23%;text-align:center;">本年登錄</th></tr>` + 
-                viewData.map(v => {
-                    const rowSpecialCls = v.isUrgent ? 'table-urgent' : (v.needsTopup ? 'table-warning' : '');
-                    const warningIcon = v.isUrgent ? ' <span title="月底將至！請盡速儲值" style="font-size:14px; display:inline-block; animation: alertPulse 1.5s infinite;">⚠️</span>' : (v.needsTopup ? ' <span title="本月已登錄，請記得儲值" style="font-size:14px;">💡</span>' : '');
-
-
-                    return `<tr class="clickable-row sortable-row ${rowSpecialCls}" data-id="${v.id}" draggable="true" onclick="if(!window.isDragging) scrollToCard('${v.id}')">
-                    <td style="white-space:nowrap;"><span class="drag-handle">☰</span><span class="star-btn ${v.starCls}" onclick="toggleStar(event, '${v.id}')">${v.isStarred ? '★' : '☆'}</span><span class="card-type ${v.cls}" style="font-size:12px; padding:3px 6px; vertical-align:middle; display:inline-block;">${v.type}</span> <span style="vertical-align:middle;" title="${v.name}">${v.displayName}${warningIcon}</span></td>
-                    <td class="val-num" style="text-align:right; vertical-align:middle;">$${v.balance.toLocaleString()}</td><td class="val-num" style="text-align:center; vertical-align:middle;">${v.displayTopups}</td>
-                    <td class="val-num" style="text-align:center; color:var(--neon-purple); vertical-align:middle;">${v.displayRegs !== null ? v.displayRegs : '<span style="color:var(--text-muted);">-</span>'}</td></tr>`;
-                }).join('');
-
-
-            // 拖曳排序事件綁定
-            document.querySelectorAll('.sortable-row').forEach(row => {
-                row.addEventListener('dragstart', e => { window.isDragging = true; row.classList.add('dragging'); e.dataTransfer.setData('text/plain', row.dataset.id); });
-                row.addEventListener('dragend', () => { row.classList.remove('dragging'); setTimeout(() => window.isDragging = false, 100); });
-                row.addEventListener('dragover', e => { e.preventDefault(); const drg = document.querySelector('.dragging'); if (!drg || drg === row) return; const rect = row.getBoundingClientRect(); row.style.borderTop = (e.clientY - rect.y - rect.height/2 < 0) ? '2px solid var(--neon-cyan)' : ''; row.style.borderBottom = (e.clientY - rect.y - rect.height/2 > 0) ? '2px solid var(--neon-cyan)' : ''; });
-                row.addEventListener('dragleave', () => { row.style.borderTop = ''; row.style.borderBottom = ''; });
-                row.addEventListener('drop', e => { e.preventDefault(); row.style.borderTop = ''; row.style.borderBottom = ''; const drg = document.querySelector('.dragging'); if (!drg || drg === row) return; const rect = row.getBoundingClientRect(); if(e.clientY - rect.y - rect.height/2 > 0) row.after(drg); else row.before(drg); appData.customOrder = Array.from(document.querySelectorAll('.sortable-row')).map(r => r.dataset.id); document.getElementById('card-sort-select').value = 'custom'; saveData(); renderCards(); triggerAutoBackup(); });
-
-
-                const handle = row.querySelector('.drag-handle');
-                handle.addEventListener('touchstart', e => { e.preventDefault(); window.isDragging = true; row.classList.add('dragging'); }, {passive: false});
-                handle.addEventListener('touchmove', e => {
-                    if (!row.classList.contains('dragging')) return;
-                    e.preventDefault();
-                    const touch = e.touches[0];
-                    const target = document.elementFromPoint(touch.clientX, touch.clientY);
-                    if (!target) return;
-                    const targetRow = target.closest('.sortable-row');
-                    if (targetRow && targetRow !== row) {
-                        const rect = targetRow.getBoundingClientRect();
-                        const mid = rect.y + rect.height / 2;
-                        if (touch.clientY > mid) targetRow.after(row); else targetRow.before(row);
-                    }
-                }, {passive: false});
-                handle.addEventListener('touchend', e => {
-                    if (!row.classList.contains('dragging')) return;
-                    row.classList.remove('dragging');
-                    setTimeout(() => window.isDragging = false, 100); 
-                    appData.customOrder = Array.from(document.querySelectorAll('.sortable-row')).map(r => r.dataset.id);
-                    document.getElementById('card-sort-select').value = 'custom';
-                    saveData(); renderCards(); triggerAutoBackup();
-                });
-                handle.addEventListener('touchcancel', e => { row.classList.remove('dragging'); window.isDragging = false; });
-            });
-
-
-            cont.innerHTML = viewData.map(v => {
-                const specialCardCls = v.isUrgent ? 'card-urgent' : (v.needsTopup ? 'card-warning' : '');
-                const bannerHtml = v.isUrgent ? `<div class="banner-urgent">⚠️ 月底將至！本月已登錄，請盡速完成儲值</div>` : 
-                                  (v.needsTopup ? `<div class="banner-warning">💡 溫馨提示：本月已登錄，請記得去儲值</div>` : '');
-
-
-                return `
-                <div class="card-item ${specialCardCls}" id="card-view-${v.id}">
-                    <div class="card-top-row"><div style="display:flex; align-items:center; gap:4px; flex:1; margin-right:4px; min-width:0;"><div class="card-type ${v.cls}" style="flex-shrink:0;">${v.type}</div><div class="card-title" style="display:flex; align-items:center; gap:4px; flex:1; min-width:0;"><span class="${v.isTruncated ? 'name-truncated' : ''}" ${v.isTruncated ? `onclick="showMessageModal('${v.name}')"` : ''} title="${v.name}">${v.displayName}</span><button class="btn-gear" style="font-size:18px; padding:0; flex-shrink:0;" onclick="viewHistory('${v.id}')">📜</button></div></div><div style="display:flex; align-items:center; gap:6px; flex-shrink:0;"><div class="card-balance-compact">$${v.balance.toLocaleString()}</div><button class="btn-gear" style="flex-shrink:0;" onclick="openEditCardModal('${v.id}')">⚙️</button></div></div>
-                    ${bannerHtml}
-                    <div class="card-numbers"><div>💳 信: <span>${v.cred}</span></div><div>🎫 票: <span>${v.trans}</span></div></div>
-                    <div class="card-info">
-                        ${v.displayTopups > 0 ? `<div style="color:var(--neon-green); font-weight:bold; text-shadow:0 0 5px rgba(1,255,195,0.4);">⚡本月儲值: ${v.displayTopups} 次</div>` : `<div style="color:var(--text-muted);">本月無儲值紀錄</div>`} 
-                        ${v.isJCB ? `<div style="border-left:1px solid rgba(255,255,255,0.1); padding-left:10px;">🔖本年登錄: <b style="color:var(--neon-purple);">${v.displayRegs}</b> 次</div>` : ''}
+            wrapper.innerHTML = `
+                <div class="card bank-${card.bank}" onclick="toggleStackCard(this, event)">
+                    <div class="card-header">
+                        <div>
+                            <div>${card.name}</div>
+                            <div class="card-holder">持卡人：${card.holder} | ${card.bank}</div>
+                        </div>
+                        <button class="copy-btn" onclick="editCard('${card.id}', event)">✏️ 編輯</button>
                     </div>
-                    <div class="card-actions-compact" ${v.isJCB ? '' : 'style="justify-content:center;"'}>
-                        <button class="btn-sm btn-sm-deduct" ${v.isJCB ? '' : 'style="flex:none; width:calc(50% - 5px);"'} onclick="openActionModal('${v.id}', '扣款')">扣款</button>
-                        ${v.isJCB ? `<button class="btn-sm btn-sm-reg" onclick="openActionModal('${v.id}', '登錄')">登錄</button>` : ''}
-                    </div>
-                </div>`;
-            }).join('');
-        }
-
-
-        // --- 統計視圖渲染邏輯 ---
-        function renderStatsView(targetType) {
-            const cont = document.getElementById('history-container');
-            const txs = appData.transactions.filter(t => t.type === targetType);
-            
-            // 計算建檔時輸入的歷史基礎值 (為了顯示大盤總計)
-            let initTotal = 0;
-            appData.cards.forEach(c => {
-                if (targetType === '登錄' && c.initRegs) initTotal += c.initRegs;
-                if (targetType === '儲值' && c.initTopups) initTotal += c.initTopups;
-            });
-
-
-            // 將真實紀錄按 YYYY-MM 分組
-            const groups = {};
-            txs.forEach(t => {
-                const d = new Date(t.timestamp);
-                const key = `${d.getFullYear()}年${pad(d.getMonth()+1)}月`;
-                if (!groups[key]) groups[key] = { count: 0, items: [] };
-                groups[key].count++;
-                groups[key].items.push(t);
-            });
-
-
-            // 產出 Header HTML
-            let html = `
-                <div style="background:var(--glass-bg); padding:15px; border-radius:10px; margin-bottom:18px; text-align:center; border:1px solid var(--neon-cyan); box-shadow: 0 0 15px rgba(5,217,232,0.2);">
-                    <div style="font-size:15px; color:var(--text-main); margin-bottom:4px;">所有年份全卡片累積${targetType}總計</div>
-                    <div style="font-size:26px; color:var(--neon-cyan); font-weight:bold; font-family:'Orbitron', sans-serif;">${initTotal + txs.length} <span style="font-size:16px;">次</span></div>
-                    ${initTotal > 0 ? `<div style="font-size:13px; color:var(--text-muted); margin-top:5px;">(包含手動建檔的 ${initTotal} 次)</div>` : ''}
-                </div>
-            `;
-
-
-            // 排序月份 (由新到舊)
-            const sortedKeys = Object.keys(groups).sort((a,b) => b.localeCompare(a));
-            
-            if (sortedKeys.length === 0) {
-                html += `<p style="text-align:center; color:var(--text-muted); font-size:16px; margin-top:30px;">尚無系統內建的真實${targetType}紀錄</p>`;
-            }
-
-
-            // 產出各月份列表
-            sortedKeys.forEach(k => {
-                const g = groups[k];
-                g.items.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-                
-                const typeColor = targetType === '儲值' ? 'var(--neon-cyan)' : 'var(--neon-purple)';
-                
-                html += `
-                <div class="stats-month-group">
-                    <div class="stats-month-title">
-                        <span>📅 ${k}</span>
-                        <span style="color:${typeColor}; text-shadow: 0 0 5px ${typeColor};">${targetType} ${g.count} 次</span>
-                    </div>
-                    ${g.items.map(t => {
-                        const c = appData.cards.find(c => c.id === t.cardId);
-                        const cardName = c ? c.name : '已刪除的卡片';
-                        return `
-                            <div class="stats-item">
-                                <div style="flex:1;">
-                                    <div style="color:#fff; font-weight:bold; font-size:15px;">${cardName}</div>
-                                    <div style="color:var(--text-muted); font-size:12px; margin-top:4px;">${formatDate(t.timestamp)} ${t.memo ? ` | 📝 ${t.memo}` : ''}</div>
-                                </div>
-                                <div style="color:${typeColor}; font-weight:bold; font-size:16px; font-family:'Orbitron', sans-serif;">
-                                    ${targetType === '儲值' ? `+$${t.amount.toLocaleString()}` : '✓ 完成'}
-                                </div>
+                   
+                    <div class="card-body">
+                        <div class="card-row">
+                            <span class="card-value" style="font-size:20px;">${formatCC(card.no)}</span>
+                            <button class="copy-btn" onclick="copyText('${card.no}', event)">複製</button>
+                        </div>
+                        <div class="card-row" style="background:transparent; padding:0;">
+                            <div class="card-row" style="flex:1; margin-right:5px; margin-bottom:0;">
+                                <span class="card-label">VALID：</span><span class="card-value">${formatExpiryDisplay(card.expiry)}</span>
+                                <button class="copy-btn" onclick="copyText('${card.expiry}', event)">複製</button>
                             </div>
-                        `;
-                    }).join('')}
+                            <div class="card-row" style="flex:1; margin-left:5px; margin-bottom:0;">
+                                <span class="card-label">CVV：</span><span class="card-value">${card.cvv}</span>
+                                <button class="copy-btn" onclick="copyText('${card.cvv}', event)">複製</button>
+                            </div>
+                        </div>
+                        ${eTicketHtml}
+                        <div class="action-row">
+                            <button class="copy-btn" style="background:rgba(255,255,255,0.4); color:black; font-weight:bold; width:100%; padding:10px;"
+                                onclick="copyAll('${card.no}', '${card.expiry}', '${card.cvv}', event)">
+                                📋 全複製 (結帳專用)
+                            </button>
+                        </div>
+                    </div>
+                    <div class="org-logo">${card.org}</div>
                 </div>
-                `;
+            `;
+            container.appendChild(wrapper);
+        });
+    }
+
+
+    // 視圖切換
+    function toggleView() {
+        isListView = !isListView;
+        document.getElementById('view-toggle-btn').innerText = isListView ? '📋 清單' : '🗂️ 堆疊';
+        renderCards();
+    }
+
+
+    // 堆疊模式展開
+    function toggleStackCard(element, event) {
+        if (isListView) return;
+        // 避免點擊按鈕時觸發展開
+        if(event.target.tagName === 'BUTTON') return;
+
+
+        const wrapper = element.parentElement;
+        if (wrapper.classList.contains('expanded')) {
+            wrapper.classList.remove('expanded');
+        } else {
+            // 關閉其他
+            document.querySelectorAll('.stack-view .card-wrapper').forEach(w => w.classList.remove('expanded'));
+            wrapper.classList.add('expanded');
+        }
+    }
+
+
+    // 複製功能
+    function copyText(text, event) {
+        if(event) event.stopPropagation();
+       
+        // 建立一個暫時的 textarea 元素來執行複製，解決 iframe 或舊版瀏覽器的限制
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+       
+        try {
+            document.execCommand('copy');
+            // 我們可以使用自己設計的提示框取代 alert，但這裡先保持簡單
+        } catch (err) {
+            console.error('無法複製', err);
+        }
+       
+        document.body.removeChild(tempTextArea);
+    }
+   
+    function copyAll(no, exp, cvv, event) {
+        if(event) event.stopPropagation();
+        const text = `${no} ${exp} ${cvv}`;
+       
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = text;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+       
+        try {
+            document.execCommand('copy');
+        } catch (err) {
+            console.error('無法全複製', err);
+        }
+       
+        document.body.removeChild(tempTextArea);
+    }
+
+
+    // 設定操作
+    function openSettings() {
+        document.getElementById('settings-modal').style.display = 'block';
+    }
+
+
+    function closeSettings() {
+        document.getElementById('settings-modal').style.display = 'none';
+        document.getElementById('import-file').value = ''; // 關閉時清空選擇的檔案
+    }
+
+
+    // 表單操作
+    function openModal() {
+        document.getElementById('modal-title').innerText = '新增卡片';
+        document.getElementById('card-id').value = '';
+        document.getElementById('card-name').value = '';
+        document.getElementById('card-no').value = '';
+        document.getElementById('card-expiry').value = '';
+        document.getElementById('card-cvv').value = '';
+        document.getElementById('card-eticket').value = '';
+        document.getElementById('card-etype').value = '無';
+        document.getElementById('btn-delete').style.display = 'none';
+        document.getElementById('form-modal').style.display = 'block';
+    }
+
+
+    function closeModal() {
+        document.getElementById('form-modal').style.display = 'none';
+        closeKeypad();
+    }
+
+
+    function editCard(id, event) {
+        if(event) event.stopPropagation();
+        const card = cards.find(c => c.id === id);
+        if(!card) return;
+       
+        document.getElementById('modal-title').innerText = '編輯卡片';
+        document.getElementById('card-id').value = card.id;
+        document.getElementById('card-name').value = card.name;
+        document.getElementById('card-bank').value = card.bank;
+        document.getElementById('card-org').value = card.org;
+        document.getElementById('card-no').value = card.no;
+        document.getElementById('card-expiry').value = card.expiry;
+        document.getElementById('card-cvv').value = card.cvv;
+        document.getElementById('card-etype').value = card.etype;
+        document.getElementById('card-eticket').value = card.eticket;
+       
+        document.getElementById('btn-delete').style.display = 'block';
+        document.getElementById('form-modal').style.display = 'block';
+    }
+
+
+    function saveCard() {
+        const id = document.getElementById('card-id').value || generateId();
+        const name = document.getElementById('card-name').value;
+        const holder = detectHolder(name); // 自動辨識
+        const bank = document.getElementById('card-bank').value;
+        const org = document.getElementById('card-org').value;
+        const no = document.getElementById('card-no').value;
+        const expiry = document.getElementById('card-expiry').value;
+        const cvv = document.getElementById('card-cvv').value;
+        const etype = document.getElementById('card-etype').value;
+        const eticket = document.getElementById('card-eticket').value;
+
+
+        if(!name || !no) return alert('請至少輸入名稱與卡號');
+
+
+        const cardData = { id, name, holder, bank, org, no, expiry, cvv, etype, eticket };
+       
+        const existingIndex = cards.findIndex(c => c.id === id);
+        if (existingIndex > -1) {
+            cards[existingIndex] = cardData;
+        } else {
+            cards.push(cardData);
+        }
+
+
+        saveAndBackup();
+        closeModal();
+        renderCards();
+    }
+
+
+    function deleteCard() {
+        // 使用自訂訊息框替代 confirm，避免在某些 PWA 環境下被阻擋，但這裡先保持簡單
+        if(!confirm('確定要刪除此卡片？')) return;
+        const id = document.getElementById('card-id').value;
+        cards = cards.filter(c => c.id !== id);
+        saveAndBackup();
+        closeModal();
+        renderCards();
+    }
+
+
+    // 儲存與自動備份核心
+    function saveAndBackup() {
+        localStorage.setItem('creditCards', JSON.stringify(cards));
+        const timeStr = new Date().toLocaleString('zh-TW');
+        localStorage.setItem('lastBackupTime', timeStr);
+        updateBackupStatus(timeStr);
+       
+        // 做法 A: 自動觸發下載 .json
+        exportData('json', true);
+    }
+
+
+    function updateBackupStatus(timeStr) {
+        const el = document.getElementById('backup-status');
+        if (timeStr) el.innerText = `✅ 最新自動備份：${timeStr}`;
+    }
+
+
+    // 匯出機制 (JSON / TXT)
+    function exportData(type, isAuto = false) {
+        if (cards.length === 0 && !isAuto) {
+            alert('沒有資料可匯出');
+            return;
+        }
+       
+        const timeKey = getTimestampStr();
+        let content = '';
+        let filename = '';
+        let mimeType = '';
+
+
+        if (type === 'json') {
+            content = JSON.stringify(cards, null, 2);
+            filename = `信用卡夾程式備份_${timeKey}.json`;
+            mimeType = 'application/json';
+        } else if (type === 'txt') {
+            // 排序邏輯：發卡銀行分群 -> 宏和優先
+            const grouped = {};
+            cards.forEach(c => {
+                if(!grouped[c.bank]) grouped[c.bank] = [];
+                grouped[c.bank].push(c);
             });
 
 
-            cont.innerHTML = html;
-        }
+            Object.keys(grouped).forEach(bank => {
+                content += `========================\n【${bank}】\n`;
+               
+                // 依照持卡人排序
+                grouped[bank].sort((a, b) => {
+                    if(a.holder === '宏和' && b.holder !== '宏和') return -1;
+                    if(a.holder !== '宏和' && b.holder === '宏和') return 1;
+                    if(a.holder === '瑋淨' && b.holder !== '瑋淨') return -1;
+                    if(a.holder !== '瑋淨' && b.holder === '瑋淨') return 1;
+                    return 0;
+                });
 
 
-        function renderHistory() {
-            const cont = document.getElementById('history-container'), selId = document.getElementById('history-card-select').value;
-            
-            // 處理統計視圖分支
-            if (selId === 'stats-reg' || selId === 'stats-topup') {
-                renderStatsView(selId === 'stats-reg' ? '登錄' : '儲值');
-                return;
-            }
-
-
-            // 處理一般列表視圖
-            let list = selId && selId !== 'all' ? appData.transactions.filter(t => t.cardId === selId) : appData.transactions;
-            if (!list || !list.length) { cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:16px; margin-top:30px;">查無資料</p>'; return; }
-
-
-            cont.innerHTML = list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map(t => {
-                const isD = t.type === '扣款', isT = t.type === '儲值', isC = t.type === '校正';
-                const cls = isD ? 'hist-deduct' : (isT ? 'hist-topup' : (isC ? 'hist-calib' : 'hist-reg'));
-                const amtCls = isD ? 'amt-deduct' : (isT ? 'amt-topup' : (isC ? 'amt-calib' : 'amt-reg'));
-                const amtStr = isD ? `- $${t.amount.toLocaleString()}` : (isT ? `+ $${t.amount.toLocaleString()}` : (isC ? `${t.amount>0?'+':'-'} $${Math.abs(t.amount).toLocaleString()}` : '[ 系統紀錄 ]'));
-                
-                // 如果是看全部，顯示卡片名稱
-                const c = appData.cards.find(c => c.id === t.cardId);
-                const nameTag = (selId === 'all' && c) ? `<div style="font-size:12px; color:var(--text-main); background:rgba(255,255,255,0.1); display:inline-block; padding:2px 6px; border-radius:4px; margin-bottom:4px;">💳 ${c.name}</div><br>` : '';
-
-
-                return `<div class="history-item ${cls}"><div class="history-left">${nameTag}<div class="history-time">${formatDate(t.timestamp)}</div><div class="history-desc">${t.type}${t.memo ? `<br><span style="font-size:15px; color:var(--text-muted); font-weight:normal;">📝 ${t.memo}</span>` : ''}</div></div><div class="history-right"><span class="history-amount ${amtCls}" ${!isD&&!isT&&!isC ? 'style="font-size:16px;"' : ''}>${amtStr}</span><div><button class="btn-edit-hist" onclick="openEditModal('${t.id}')">編輯</button><button class="btn-delete-hist" onclick="deleteTransaction('${t.id}')">刪除</button></div></div></div>`;
-            }).join('');
-        }
-
-
-        function exportBackup(isAuto) {
-            appData.unsavedCount = 0; appData.lastBackupTime = new Date().toISOString(); saveData();
-            const d = new Date(), dateStr = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
-            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(appData)], { type: "application/json" })); a.download = `票證備份_${dateStr}.json`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
-            if(!isAuto) alert('備份檔下載程序已啟動！');
-        }
-
-
-        function exportTxt() {
-            const now = new Date();
-            const currentYear = now.getFullYear();
-            const currentMonthKey = `${currentYear}-${now.getMonth()}`;
-
-
-            let txt = `【電子票證卡片資訊】\n產出時間：${formatDate(now)}\n\n`;
-
-
-            // 依新增順序 (appData.cards 原生順序)
-            appData.cards.forEach(c => {
-                const isJCB = c.type === '悠遊卡' && c.isJCB !== false;
-
-
-                // 計算登錄 (本年)
-                const effectiveInitRegs = (c.initRegsYear === currentYear) ? (c.initRegs || 0) : 0;
-                const realThisYearRegs = getTxCount(c.id, '登錄', false);
-                const displayRegs = isJCB ? (effectiveInitRegs + realThisYearRegs) : null;
-
-
-                // 計算儲值 (本月)
-                const effectiveInitTopups = (c.initTopupsMonth === currentMonthKey) ? (c.initTopups || 0) : 0;
-                const realThisMonthTopups = getTxCount(c.id, '儲值', true);
-                const displayTopups = effectiveInitTopups + realThisMonthTopups;
-
-
-                // 尋找最後儲值月份
-                let lastTopupStr = '無紀錄';
-                const topupTxs = appData.transactions.filter(t => t.cardId === c.id && t.type === '儲值').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                
-                let latestDate = null;
-                if (topupTxs.length > 0) {
-                    latestDate = new Date(topupTxs[0].timestamp);
-                }
-                if (c.initTopups > 0 && c.initTopupsMonth) {
-                    const [initY, initM] = c.initTopupsMonth.split('-');
-                    const initDate = new Date(initY, initM, 1);
-                    if (!latestDate || initDate > latestDate) {
-                        latestDate = initDate;
-                    }
-                }
-                if (latestDate) {
-                    lastTopupStr = `${latestDate.getFullYear()}/${pad(latestDate.getMonth() + 1)}`;
-                }
-
-
-                txt += `========================================\n`;
-                txt += `💳 卡片：${c.name} (${c.type})\n`;
-                txt += `💰 餘額：$${c.balance.toLocaleString()}\n`;
-                txt += `⚡ 儲值：本月 ${displayTopups} 次 (最後儲值：${lastTopupStr})\n`;
-                if (isJCB) {
-                    txt += `🔖 登錄：本年 ${displayRegs} 次\n`;
-                }
+                grouped[bank].forEach(c => {
+                    content += `------------------------\n`;
+                    content += `卡片名稱：${c.name}\n`;
+                    content += `持卡人：${c.holder}\n`;
+                    content += `發卡組織：${c.org}\n`;
+                    content += `卡號：${formatCC(c.no)}\n`;
+                    content += `到期日：${formatExpiryDisplay(c.expiry)}\n`;
+                    content += `驗證碼：${c.cvv}\n`;
+                    content += `電子票證：${c.etype !== '無' ? c.etype + ' ' + formatCC(c.eticket) : '無'}\n`;
+                });
+                content += `\n`;
             });
-            txt += `========================================\n`;
-
-
-            const a = document.createElement('a'); 
-            a.href = URL.createObjectURL(new Blob([txt], { type: "text/plain;charset=utf-8" })); 
-            const dateStr = `${currentYear}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
-            a.download = `卡片資訊匯出_${dateStr}.txt`;
-            document.body.appendChild(a); 
-            a.click(); 
-            document.body.removeChild(a); 
-            URL.revokeObjectURL(a.href);
+            filename = `信用卡夾程式清單_${timeKey}.txt`;
+            mimeType = 'text/plain';
         }
 
 
-        function importBackup(e) {
-            const f = e.target.files[0]; if (!f) return; const r = new FileReader();
-            r.onload = ev => { try { const d = JSON.parse(ev.target.result); if (d.cards && d.transactions) { appData = { ...appData, ...d }; saveData(); alert('還原成功！'); switchTab('cards', document.querySelectorAll('.nav-btn')[0]); } else throw new Error('格式錯誤'); } catch (err) { alert('失敗：' + err.message); } e.target.value = ''; };
-            r.readAsText(f);
-        }
+        // 觸發下載
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
 
 
-        function setupPWA() {
-            let iconUrl = "icon.png";
+    // 還原備份檔 (讀取 JSON)
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
             try {
-                let base = window.location.href;
-                if (base.startsWith('blob:') || base.startsWith('data:')) {
-                    base = window.location.origin + '/';
+                const importedCards = JSON.parse(e.target.result);
+                // 簡易驗證是否為我們程式產出的陣列資料
+                if (Array.isArray(importedCards)) {
+                    if (confirm('確定要還原此備份檔嗎？目前的卡片資料將會被全部覆蓋。')) {
+                        cards = importedCards;
+                        // 還原後自動存入 localStorage 並觸發自動備份
+                        saveAndBackup();
+                        renderCards();
+                        alert('備份檔還原成功！');
+                        closeSettings();
+                    }
+                } else {
+                    alert('檔案格式錯誤，請選擇由本程式匯出的 JSON 備份檔。');
                 }
-                iconUrl = new URL("icon.png", base).href;
-            } catch (e) {
-                iconUrl = "icon.png";
+            } catch (error) {
+                alert('讀取檔案失敗：' + error.message);
             }
-            
-            const m = { name: "電子票證管家", short_name: "電子票證管家", display: "standalone", background_color: "#0b0f19", theme_color: "#0b0f19", icons: [{ src: iconUrl, sizes: "192x192 512x512", type: "image/png", purpose: "any maskable" }, { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%2305d9e8'/%3E%3Ctext x='50' y='65' font-size='50' font-weight='bold' font-family='sans-serif' text-anchor='middle' fill='%230b0f19'%3E卡%3C/text%3E%3C/svg%3E", sizes: "512x512", type: "image/svg+xml" }], start_url: window.location.href };
-            const l = document.createElement('link'); l.rel = 'manifest'; l.href = URL.createObjectURL(new Blob([JSON.stringify(m)], {type: 'application/json'})); document.head.appendChild(l);
-            if ('serviceWorker' in navigator) navigator.serviceWorker.register(URL.createObjectURL(new Blob([`self.addEventListener('fetch', e => e.respondWith(fetch(e.request).then(r => caches.open('transit-pwa').then(c => { c.put(e.request, r.clone()); return r; })).catch(() => caches.match(e.request))));`], {type: 'application/javascript'}))).catch(console.log);
+            // 重置 input 以便下次能選同一個檔案
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+
+    // 虛擬鍵盤邏輯
+    function openKeypad(inputId) {
+        activeInputId = inputId;
+        document.getElementById('virtual-keypad').style.display = 'grid';
+    }
+
+
+    function closeKeypad() {
+        activeInputId = null;
+        document.getElementById('virtual-keypad').style.display = 'none';
+    }
+
+
+    function keyPress(val) {
+        if (!activeInputId) return;
+        const input = document.getElementById(activeInputId);
+        let currentVal = input.value;
+
+
+        // 設定字數限制
+        let maxLength = 16;
+        if (activeInputId === 'card-expiry') maxLength = 4;
+        if (activeInputId === 'card-cvv') maxLength = 3;
+
+
+        if (val === 'clear') {
+            input.value = '';
+        } else if (val === 'del') {
+            input.value = currentVal.slice(0, -1);
+        } else {
+            if (currentVal.length < maxLength) {
+                input.value += val;
+            }
         }
+    }
+</script>
 
 
-        window.onload = init;
-    </script>
 </body>
 </html>
-
 
 
