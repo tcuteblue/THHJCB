@@ -290,7 +290,7 @@
             <div class="form-group"><label>扣款金額</label><input type="number" id="modal-amount" class="form-control" placeholder="請輸入金額"></div>
             <div class="form-group"><label>消費明細 (選填)</label><input type="text" id="modal-memo" class="form-control" placeholder="例如：超商買咖啡"></div>
             <div class="modal-buttons">
-                <button class="btn-cancel" onclick="closeModal()">取消</button>
+                <button class="btn-cancel" onclick="closeModal('action-modal')">取消</button>
                 <button class="btn-block" style="margin-bottom:0; flex:1 1 40%;" onclick="submitAction()">確認執行</button>
             </div>
         </div>
@@ -374,6 +374,21 @@
     </div>
 
 
+    <!-- iOS 安裝教學彈窗 -->
+    <div class="modal-overlay" id="ios-install-modal" style="z-index: 60;">
+        <div class="modal" style="text-align: center; max-width: 320px; border-color: var(--neon-cyan); box-shadow: 0 0 30px rgba(5,217,232,0.2);">
+            <h3 style="color: var(--neon-cyan); font-size: 20px; border: none; margin-bottom: 10px;">📲 安裝至主畫面</h3>
+            <p style="font-size: 15px; margin-bottom: 15px; color: var(--text-main); text-align: left; line-height: 1.6;">
+                在 iOS 裝置上，請跟著以下步驟安裝 APP：<br><br>
+                1. 點擊 Safari 瀏覽器下方的「分享」圖示 <span style="font-size:18px;">⍗</span><br>
+                2. 往下滑動並點選「<span style="color:var(--neon-cyan);">➕ 加入主畫面</span>」<br>
+                3. 點擊右上角的「新增」即可！
+            </p>
+            <button class="btn-block" style="margin-bottom:0;" onclick="closeModal('ios-install-modal')">我知道了</button>
+        </div>
+    </div>
+
+
     <!-- 離開程式確認視窗 -->
     <div class="modal-overlay" id="exit-modal" style="z-index: 60;">
         <div class="modal" style="text-align: center; max-width: 300px; border-color: var(--neon-pink); box-shadow: 0 0 30px rgba(255,42,109,0.2);">
@@ -390,9 +405,21 @@
     <script>
         // --- 核心變數與初始化 ---
         const DB_KEY = 'TransitApp_Data';
-        let appData = { cards: [], transactions: [], customOrder: [], unsavedCount: 0, isOverviewCollapsed: false };
+        let appData = { cards: [], transactions: [], customOrder: [], isOverviewCollapsed: false };
         let deferredPrompt, currentAction = { cardId: null, type: null };
         let allowAppExit = false; 
+
+
+        // 偵測是否為 iOS 裝置 (強化支援較新的 iPad)
+        function isIOS() {
+            return (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && !window.MSStream;
+        }
+
+
+        // 偵測是否已在 PWA 獨立模式下執行 (已經安裝 APP)
+        function isPWA() {
+            return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+        }
 
 
         function init() {
@@ -411,10 +438,43 @@
             renderCards();
             renderHistory();
             
+            // --- APP 安裝與隱藏邏輯 ---
             const installBtn = document.getElementById('install-app-btn');
-            window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; installBtn.style.display = 'block'; });
-            installBtn.addEventListener('click', async () => { if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; }});
-            window.addEventListener('appinstalled', () => { deferredPrompt = null; installBtn.style.display = 'none'; });
+            
+            // 如果已經是在 PWA 模式中開啟，直接隱藏安裝按鈕
+            if (isPWA()) {
+                installBtn.style.display = 'none';
+            } else {
+                // 若尚未安裝：
+                // iOS 裝置 (手動教學模式)
+                if (isIOS()) {
+                    installBtn.style.display = 'block';
+                    installBtn.innerHTML = '📲 安裝為 APP (iOS 教學)';
+                    installBtn.onclick = () => { document.getElementById('ios-install-modal').style.display = 'flex'; };
+                } 
+                // Android 或其他支援 PWA 自動提示的裝置
+                else {
+                    window.addEventListener('beforeinstallprompt', e => { 
+                        e.preventDefault(); 
+                        deferredPrompt = e; 
+                        installBtn.style.display = 'block'; 
+                        installBtn.onclick = async () => {
+                            if (deferredPrompt) { 
+                                deferredPrompt.prompt(); 
+                                await deferredPrompt.userChoice; 
+                                deferredPrompt = null; 
+                                installBtn.style.display = 'none'; 
+                            }
+                        };
+                    });
+                }
+            }
+
+
+            window.addEventListener('appinstalled', () => { 
+                deferredPrompt = null; 
+                installBtn.style.display = 'none'; 
+            });
 
 
             // 啟動時檢查是否需要跳出儲值提醒
@@ -422,24 +482,18 @@
         }
 
 
-        // --- 返回鍵攔截邏輯 ---
+        // --- 返回鍵防呆與動態彈窗攔截邏輯 ---
         window.addEventListener('popstate', function(e) {
             if (allowAppExit) return;
             history.pushState('app-trap', '', ''); 
 
 
-            // 1. 檢查是否有彈出視窗
-            const modals = ['startup-reminder-modal', 'exit-modal', 'message-modal', 'action-modal', 'edit-modal', 'edit-card-modal', 'topup-option-modal'];
-            let didCloseModal = false;
-            for (let id of modals) {
-                let el = document.getElementById(id);
-                if (el && el.style.display === 'flex') {
-                    closeModal(id);
-                    didCloseModal = true;
-                    break;
-                }
+            // 1. 動態偵測是否有正在顯示的彈窗，若有則關閉它 (防呆優化)
+            const openModals = Array.from(document.querySelectorAll('.modal-overlay')).filter(el => window.getComputedStyle(el).display === 'flex' || el.style.display === 'flex');
+            if (openModals.length > 0) {
+                openModals.forEach(m => closeModal(m.id));
+                return;
             }
-            if (didCloseModal) return;
 
 
             // 2. 檢查是否在「我的卡片」以外的分頁
@@ -500,8 +554,18 @@
                 });
             }
         };
+
+
         const saveData = () => { localStorage.setItem(DB_KEY, JSON.stringify(appData)); updateHistorySelect(); renderHistory(); };
-        const triggerAutoBackup = () => { appData.unsavedCount = (appData.unsavedCount || 0) + 1; saveData(); if (appData.unsavedCount >= 1) exportBackup(true); };
+        
+        // 優化：觸發自動備份 (移除無謂的計算，只要有異動就下載 json 存檔)
+        const triggerAutoBackup = () => { 
+            appData.lastBackupTime = new Date().toISOString(); 
+            saveData(); 
+            const d = new Date(), dateStr = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(appData)], { type: "application/json" })); a.download = `票證備份_${dateStr}.json`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+        };
 
 
         // --- 工具函式 ---
@@ -553,7 +617,10 @@
             if(id === 'cards' && !preventScroll) window.scrollTo(0,0); 
         }
         
-        function closeModal(id = 'action-modal') { document.getElementById(id).style.display = 'none'; }
+        function closeModal(id) { 
+            const el = document.getElementById(id); 
+            if(el) el.style.display = 'none'; 
+        }
         
         function showMessageModal(text) {
             document.getElementById('message-modal-content').innerText = text;
@@ -598,7 +665,7 @@
 
         // --- 核心功能 ---
         function checkRemindersOnStartup() {
-            // 利用 sessionStorage 讓每次開啟 App 的 session 只彈出一次，避免操作中途重整網頁一直被打擾
+            // 利用 sessionStorage 讓每次開啟 App 的 session 只彈出一次
             if (sessionStorage.getItem('startupReminderShown')) return; 
             
             const now = new Date();
@@ -614,10 +681,7 @@
                 
                 const displayTopups = effectiveInitTopups + realThisMonthTopups;
                 // 只有「本月真實有登錄」且「尚未有儲值紀錄」才需要提醒
-                const needsTopup = realThisMonthRegs > 0 && displayTopups === 0;
-
-
-                if (needsTopup) {
+                if (realThisMonthRegs > 0 && displayTopups === 0) {
                     reminderCards.push(c);
                 }
             });
@@ -651,8 +715,8 @@
                 transitNum: document.getElementById('new-card-transit').value.trim(),
                 initRegs: parseInt(document.getElementById('new-card-regcount').value) || 0,
                 initTopups: parseInt(document.getElementById('new-card-topup-count').value) || 0,
-                initRegsYear: now.getFullYear(), // 鎖定輸入時的年份
-                initTopupsMonth: `${now.getFullYear()}-${now.getMonth()}` // 鎖定輸入時的月份
+                initRegsYear: now.getFullYear(),
+                initTopupsMonth: `${now.getFullYear()}-${now.getMonth()}`
             });
             getCustomOrder();
             
@@ -698,7 +762,6 @@
             const newRegs = parseInt(document.getElementById('edit-card-regcount').value) || 0;
             const newTopups = parseInt(document.getElementById('edit-card-topup-count').value) || 0;
             
-            // 如果使用者改了數值，就更新鎖定的年月以確保生效
             if (c.initRegs !== newRegs) { c.initRegs = newRegs; c.initRegsYear = now.getFullYear(); }
             if (c.initTopups !== newTopups) { c.initTopups = newTopups; c.initTopupsMonth = `${now.getFullYear()}-${now.getMonth()}`; }
 
@@ -723,12 +786,10 @@
         function openActionModal(id, type) {
             currentAction = { cardId: id, type };
             if (type === '登錄') {
-                // 檢查該卡本年度總登錄次數
                 const c = appData.cards.find(card => card.id === id);
                 const currentYear = new Date().getFullYear();
                 const effectiveInitRegs = (c.initRegsYear === currentYear) ? (c.initRegs || 0) : 0;
-                const realThisYearRegs = getTxCount(id, '登錄', false);
-                const displayRegs = effectiveInitRegs + realThisYearRegs;
+                const displayRegs = effectiveInitRegs + getTxCount(id, '登錄', false);
                 
                 if (displayRegs >= 3) return alert('⛔ 本年度登錄已達 3 次上限！');
                 if (getTxCount(id, '登錄', true) > 0) return alert('⛔ 本月已登錄過！每月限登錄1次。');
@@ -764,7 +825,7 @@
             const amt = parseInt(document.getElementById('modal-amount').value);
             if (!amt || amt <= 0) return alert('請輸入有效金額');
             executeAction(currentAction.cardId, currentAction.type, amt, document.getElementById('modal-memo').value.trim());
-            closeModal();
+            closeModal('action-modal');
         }
 
 
@@ -908,21 +969,17 @@
                 const isTruncated = c.name.length > 10;
                 const displayName = isTruncated ? c.name.substring(0, 10) + '...' : c.name;
                 
-                // --- 計算目前有效的初始值 ---
                 const effectiveInitRegs = (c.initRegsYear === currentYear) ? (c.initRegs || 0) : 0;
                 const effectiveInitTopups = (c.initTopupsMonth === currentMonthKey) ? (c.initTopups || 0) : 0;
 
 
-                // --- 取得真實交易發生的次數 ---
                 const realThisYearRegs = getTxCount(c.id, '登錄', false);
                 const realThisMonthTopups = getTxCount(c.id, '儲值', true);
                 const realThisMonthRegs = getTxCount(c.id, '登錄', true);
                 
-                // --- 合計顯示次數 ---
                 const displayTopups = effectiveInitTopups + realThisMonthTopups;
                 const displayRegs = isJCB ? (effectiveInitRegs + realThisYearRegs) : null;
                 
-                // --- 提示邏輯 ---
                 const needsTopup = realThisMonthRegs > 0 && displayTopups === 0;
                 const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
                 const isUrgent = needsTopup && (daysInMonth - now.getDate() <= 3);
@@ -1010,7 +1067,6 @@
             const cont = document.getElementById('history-container');
             const txs = appData.transactions.filter(t => t.type === targetType);
             
-            // 計算建檔時輸入的歷史基礎值 (為了顯示大盤總計)
             let initTotal = 0;
             appData.cards.forEach(c => {
                 if (targetType === '登錄' && c.initRegs) initTotal += c.initRegs;
@@ -1018,7 +1074,6 @@
             });
 
 
-            // 將真實紀錄按 YYYY-MM 分組
             const groups = {};
             txs.forEach(t => {
                 const d = new Date(t.timestamp);
@@ -1029,7 +1084,6 @@
             });
 
 
-            // 產出 Header HTML
             let html = `
                 <div style="background:var(--glass-bg); padding:15px; border-radius:10px; margin-bottom:18px; text-align:center; border:1px solid var(--neon-cyan); box-shadow: 0 0 15px rgba(5,217,232,0.2);">
                     <div style="font-size:15px; color:var(--text-main); margin-bottom:4px;">所有年份全卡片累積${targetType}總計</div>
@@ -1039,7 +1093,6 @@
             `;
 
 
-            // 排序月份 (由新到舊)
             const sortedKeys = Object.keys(groups).sort((a,b) => b.localeCompare(a));
             
             if (sortedKeys.length === 0) {
@@ -1047,11 +1100,9 @@
             }
 
 
-            // 產出各月份列表
             sortedKeys.forEach(k => {
                 const g = groups[k];
                 g.items.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-                
                 const typeColor = targetType === '儲值' ? 'var(--neon-cyan)' : 'var(--neon-purple)';
                 
                 html += `
@@ -1087,14 +1138,12 @@
         function renderHistory() {
             const cont = document.getElementById('history-container'), selId = document.getElementById('history-card-select').value;
             
-            // 處理統計視圖分支
             if (selId === 'stats-reg' || selId === 'stats-topup') {
                 renderStatsView(selId === 'stats-reg' ? '登錄' : '儲值');
                 return;
             }
 
 
-            // 處理一般列表視圖
             let list = selId && selId !== 'all' ? appData.transactions.filter(t => t.cardId === selId) : appData.transactions;
             if (!list || !list.length) { cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:16px; margin-top:30px;">查無資料</p>'; return; }
 
@@ -1105,7 +1154,6 @@
                 const amtCls = isD ? 'amt-deduct' : (isT ? 'amt-topup' : (isC ? 'amt-calib' : 'amt-reg'));
                 const amtStr = isD ? `- $${t.amount.toLocaleString()}` : (isT ? `+ $${t.amount.toLocaleString()}` : (isC ? `${t.amount>0?'+':'-'} $${Math.abs(t.amount).toLocaleString()}` : '[ 系統紀錄 ]'));
                 
-                // 如果是看全部，顯示卡片名稱
                 const c = appData.cards.find(c => c.id === t.cardId);
                 const nameTag = (selId === 'all' && c) ? `<div style="font-size:12px; color:var(--text-main); background:rgba(255,255,255,0.1); display:inline-block; padding:2px 6px; border-radius:4px; margin-bottom:4px;">💳 ${c.name}</div><br>` : '';
 
@@ -1115,12 +1163,10 @@
         }
 
 
+        // --- 備份匯出 ---
         function exportBackup(isAuto) {
-            appData.unsavedCount = 0; appData.lastBackupTime = new Date().toISOString(); saveData();
-            const d = new Date(), dateStr = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
-            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(appData)], { type: "application/json" })); a.download = `票證備份_${dateStr}.json`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
-            if(!isAuto) alert('備份檔下載程序已啟動！');
+            if (!isAuto) triggerAutoBackup(); // 手動匯出時直接共用同一個儲存與下載邏輯
+            if (!isAuto) alert('備份檔下載程序已啟動！');
         }
 
 
@@ -1133,51 +1179,42 @@
             let txt = `【電子票證卡片資訊】\n產出時間：${formatDate(now)}\n\n`;
 
 
-            // 依新增順序 (appData.cards 原生順序)
             appData.cards.forEach(c => {
                 const isJCB = c.type === '悠遊卡' && c.isJCB !== false;
 
 
-                // 計算登錄 (本年)
                 const effectiveInitRegs = (c.initRegsYear === currentYear) ? (c.initRegs || 0) : 0;
                 const realThisYearRegs = getTxCount(c.id, '登錄', false);
                 const displayRegs = isJCB ? (effectiveInitRegs + realThisYearRegs) : null;
 
 
-                // 計算儲值 (本月)
                 const effectiveInitTopups = (c.initTopupsMonth === currentMonthKey) ? (c.initTopups || 0) : 0;
                 const realThisMonthTopups = getTxCount(c.id, '儲值', true);
                 const displayTopups = effectiveInitTopups + realThisMonthTopups;
 
 
-                // 尋找最後儲值月份
                 let lastTopupStr = '無紀錄';
                 const topupTxs = appData.transactions.filter(t => t.cardId === c.id && t.type === '儲值').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 
                 let latestDate = null;
-                if (topupTxs.length > 0) {
-                    latestDate = new Date(topupTxs[0].timestamp);
-                }
+                if (topupTxs.length > 0) latestDate = new Date(topupTxs[0].timestamp);
+                
                 if (c.initTopups > 0 && c.initTopupsMonth) {
                     const [initY, initM] = c.initTopupsMonth.split('-');
                     const initDate = new Date(initY, initM, 1);
-                    if (!latestDate || initDate > latestDate) {
-                        latestDate = initDate;
-                    }
+                    if (!latestDate || initDate > latestDate) latestDate = initDate;
                 }
-                if (latestDate) {
-                    lastTopupStr = `${latestDate.getFullYear()}/${pad(latestDate.getMonth() + 1)}`;
-                }
+                
+                if (latestDate) lastTopupStr = `${latestDate.getFullYear()}/${pad(latestDate.getMonth() + 1)}`;
 
 
                 txt += `========================================\n`;
                 txt += `💳 卡片：${c.name} (${c.type})\n`;
                 txt += `💰 餘額：$${c.balance.toLocaleString()}\n`;
                 txt += `⚡ 儲值：本月 ${displayTopups} 次 (最後儲值：${lastTopupStr})\n`;
-                if (isJCB) {
-                    txt += `🔖 登錄：本年 ${displayRegs} 次\n`;
-                }
+                if (isJCB) txt += `🔖 登錄：本年 ${displayRegs} 次\n`;
             });
+            
             txt += `========================================\n`;
 
 
