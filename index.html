@@ -11,7 +11,7 @@
 
         :root {
             /* 清新明亮主題色盤 */
-            --bg-color: #f0f4f8; /* 淺灰藍背景 */
+            --bg-color: #f0f4f8; 
             --card-bg: #ffffff;
             --border-color: #e2e8f0;
             --text-main: #334155;
@@ -31,9 +31,9 @@
             --purple-dark: #6d28d9;
             
             /* 票證專屬色 */
-            --color-easy: #0d9488; /* 悠遊卡 藍綠 */
-            --color-ipass: #f59e0b; /* 一卡通 橘黃 */
-            --color-icash: #f43f5e; /* 愛金卡 粉紅 */
+            --color-easy: #0d9488; 
+            --color-ipass: #f59e0b; 
+            --color-icash: #f43f5e; 
         }
 
         * { box-sizing: border-box; }
@@ -187,29 +187,31 @@
         
         .table-warning { background-color: #fef3c7; border-left: 3px solid var(--warning-color) !important; }
         .table-urgent { border-left: 3px solid var(--danger-color) !important; background-color: #fee2e2; }
+        
+        .multi-sort-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .multi-sort-row label { flex: 0 0 60px; font-size: 14px; color: var(--primary-dark); font-weight: bold; margin-bottom: 0; }
     </style>
 </head>
 <body>
     <div class="header">電子票證管家</div>
 
-    <!-- Tab: 我的卡片 -->
     <div id="tab-cards" class="tab-content active-tab">
         <button id="install-app-btn" class="btn-install" style="display: none;">📲 安裝為 APP 桌面捷徑</button>
         <div id="last-backup-info" class="backup-notice"></div>
         
-        <!-- 首頁搜尋列 -->
         <div class="toolbar">
             <input type="text" id="card-search" class="form-control" placeholder="🔍 搜尋卡片名稱、號碼..." onkeyup="renderCards()" style="margin-bottom: 0;">
         </div>
 
         <div class="toolbar" id="sort-toolbar" style="display:none; font-size:14px;">
             <div style="color:var(--text-muted); font-weight:bold; white-space:nowrap;">排序：</div>
-            <select id="card-sort-select" class="form-control" style="flex:1; padding: 10px;" onchange="renderCards()">
+            <select id="card-sort-select" class="form-control" style="flex:1; padding: 10px;" onchange="handleSortChange()">
                 <option value="smart">🧠 智慧推薦 (優先登錄/儲值)</option>
-                <option value="custom">✋ 自訂排序 (拖曳總覽表格)</option>
                 <option value="default">🕒 預設排序 (新增順序)</option>
                 <option value="balance">💰 卡片餘額 (金額高低切換)</option>
                 <option value="type">🏷️ 卡片種類 (依票證類型)</option>
+                <option value="custom">✋ 自訂排序 (拖曳總覽表格)</option>
+                <option value="multi" style="color: var(--primary-dark); font-weight: bold;">🎛️ 自訂多重疊加排序...</option>
             </select>
             <button id="reset-sort-btn" class="btn-cancel-modal btn-3d" style="display:none; padding: 10px 14px; border-radius: 10px; flex:none; margin: 0 0 0 8px; font-size: 14px;" onclick="resetCustomSort()" title="重置排序">🔄</button>
             <button id="balance-sort-btn" class="btn-cancel-modal btn-3d" style="display:none; padding: 10px 14px; border-radius: 10px; flex:none; margin: 0 0 0 8px; font-size: 14px;" onclick="toggleBalanceSort()"></button>
@@ -227,19 +229,16 @@
         <div id="cards-container"></div>
     </div>
 
-    <!-- Tab: 歷史記錄 -->
     <div id="tab-history" class="tab-content">
         <h3 style="margin-top:0; color:var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom:10px; font-size: 20px;">📜 歷史記錄與統計</h3>
         <div class="form-group">
             <input type="text" id="history-search" class="form-control" placeholder="🔍 搜尋紀錄、卡片、明細..." onkeyup="renderHistory()" style="margin-bottom: 12px;">
             <select id="history-card-select" class="form-control" onchange="renderHistory()">
-                <!-- JS 動態產生選項 -->
-            </select>
+                </select>
         </div>
         <div id="history-container"></div>
     </div>
 
-    <!-- Tab: 系統設定 -->
     <div id="tab-settings" class="tab-content">
         <div class="card-item" style="padding:20px;">
             <h3 style="margin-top:0; color:var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom:10px; font-size: 18px;">✨ 新增卡片</h3>
@@ -280,14 +279,12 @@
         </div>
     </div>
 
-    <!-- Navigation -->
     <div class="bottom-nav">
         <button class="nav-btn active" onclick="switchTab('cards', this)"><div class="nav-icon">💳</div><span>我的卡片</span></button>
         <button class="nav-btn" onclick="switchTab('history', this)"><div class="nav-icon">📊</div><span>歷史記錄</span></button>
         <button class="nav-btn" onclick="switchTab('settings', this)"><div class="nav-icon">⚙️</div><span>系統設定</span></button>
     </div>
 
-    <!-- 通用確認與警告對話框 (取代原生 alert/confirm) -->
     <div class="modal-overlay" id="dialog-modal" style="z-index: 100;">
         <div class="modal" style="text-align: center; max-width: 300px; padding: 25px 20px;">
             <h3 id="dialog-title" style="color: var(--primary-color); font-size: 20px; border: none; margin-bottom: 10px;">提示</h3>
@@ -296,7 +293,6 @@
         </div>
     </div>
 
-    <!-- 啟動提醒視窗 -->
     <div class="modal-overlay" id="startup-reminder-modal" style="z-index: 50;">
         <div class="modal" style="text-align: center; max-width: 320px;">
             <h3 style="color: var(--warning-color); font-size: 20px; border: none; margin-bottom: 10px;">💡 儲值提醒</h3>
@@ -306,7 +302,6 @@
         </div>
     </div>
 
-    <!-- iOS 安裝教學彈窗 -->
     <div class="modal-overlay" id="ios-install-modal" style="z-index: 60;">
         <div class="modal" style="text-align: center; max-width: 320px;">
             <h3 style="color: var(--primary-color); font-size: 20px; border: none; margin-bottom: 10px;">📲 安裝至主畫面</h3>
@@ -320,7 +315,6 @@
         </div>
     </div>
 
-    <!-- 儲值選項視窗 -->
     <div class="modal-overlay" id="topup-option-modal" style="z-index: 25;">
         <div class="modal" style="text-align: center; max-width: 320px;">
             <h3 style="color: var(--primary-color); font-size: 20px; border:none; margin-bottom: 15px;">選擇儲值金額</h3>
@@ -333,7 +327,23 @@
         </div>
     </div>
 
-    <!-- 輸入扣款與自訂儲值視窗 -->
+    <div class="modal-overlay" id="multi-sort-modal" style="z-index: 40;">
+        <div class="modal">
+            <h3 style="color: var(--primary-color); font-size: 20px; border-bottom: 2px solid var(--bg-color); margin-bottom: 20px;">🎛️ 進階疊加排序</h3>
+            <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">請依序設定您想要的排列優先權，當上層條件相同時，系統會自動套用下層條件進行細排。</p>
+            
+            <div class="multi-sort-row"><label>優先 1</label><select id="ms-l1" class="form-control" style="padding: 10px;"></select></div>
+            <div class="multi-sort-row"><label>優先 2</label><select id="ms-l2" class="form-control" style="padding: 10px;"></select></div>
+            <div class="multi-sort-row"><label>優先 3</label><select id="ms-l3" class="form-control" style="padding: 10px;"></select></div>
+            <div class="multi-sort-row"><label>優先 4</label><select id="ms-l4" class="form-control" style="padding: 10px;"></select></div>
+            
+            <div class="modal-buttons" style="margin-top: 30px;">
+                <button class="btn-cancel-modal btn-3d" onclick="cancelMultiSort()">取消</button>
+                <button class="btn-block btn-primary btn-3d" style="margin-bottom:0; flex:1 1 40%;" onclick="saveMultiSort()">套用排序</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="action-modal">
         <div class="modal">
             <h3 id="modal-title">輸入金額</h3>
@@ -346,7 +356,6 @@
         </div>
     </div>
 
-    <!-- 編輯紀錄視窗 -->
     <div class="modal-overlay" id="edit-modal">
         <div class="modal">
             <h3>編輯記錄</h3><input type="hidden" id="edit-tx-id">
@@ -360,7 +369,6 @@
         </div>
     </div>
 
-    <!-- 編輯卡片視窗 -->
     <div class="modal-overlay" id="edit-card-modal">
         <div class="modal">
             <h3>編輯卡片資訊</h3><input type="hidden" id="edit-card-id">
@@ -391,7 +399,7 @@
     <script>
         // --- 核心變數與初始化 ---
         const DB_KEY = 'TransitApp_Data';
-        let appData = { cards: [], transactions: [], customOrder: [], isOverviewCollapsed: false };
+        let appData = { cards: [], transactions: [], customOrder: [], isOverviewCollapsed: false, multiSort: {l1: 'type', l2: 'balance-desc', l3: 'none', l4: 'none'} };
         let deferredPrompt, currentAction = { cardId: null, type: null };
         let allowAppExit = false; 
 
@@ -411,16 +419,11 @@
                     <button class="btn-block btn-primary btn-3d" style="margin-bottom:0; flex:1 1 40%; background-color: var(--warning-color); box-shadow: 0 4px 0 #d97706;" onclick="closeDialog(true)">確定</button>
                 `;
             } else {
-                btnContainer.innerHTML = `
-                    <button class="btn-block btn-primary btn-3d" style="margin-bottom:0;" onclick="closeModal('dialog-modal')">確定</button>
-                `;
+                btnContainer.innerHTML = `<button class="btn-block btn-primary btn-3d" style="margin-bottom:0;" onclick="closeModal('dialog-modal')">確定</button>`;
             }
             document.getElementById('dialog-modal').style.display = 'flex';
         }
-        function closeDialog(result) {
-            closeModal('dialog-modal');
-            if (dialogCallback) dialogCallback(result);
-        }
+        function closeDialog(result) { closeModal('dialog-modal'); if (dialogCallback) dialogCallback(result); }
 
         function isIOS() { return (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && !window.MSStream; }
         function isPWA() { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; }
@@ -432,66 +435,45 @@
 
             if (!appData.sortPreference) appData.sortPreference = 'default';
             if (!appData.balanceSortDir) appData.balanceSortDir = 'desc'; 
+            if (!appData.multiSort) appData.multiSort = {l1: 'type', l2: 'balance-desc', l3: 'none', l4: 'none'};
             
             document.getElementById('card-sort-select').value = appData.sortPreference;
             toggleJcbUI('new-card');
             updateHistorySelect();
+            initMultiSortOptions();
             renderCards();
             renderHistory();
             
             const installBtn = document.getElementById('install-app-btn');
-            if (isPWA()) {
-                installBtn.style.display = 'none';
-            } else {
-                if (isIOS()) {
-                    installBtn.style.display = 'block';
-                    installBtn.onclick = () => { document.getElementById('ios-install-modal').style.display = 'flex'; };
-                } else {
-                    window.addEventListener('beforeinstallprompt', e => { 
-                        e.preventDefault(); deferredPrompt = e; installBtn.style.display = 'block'; 
-                        installBtn.onclick = async () => {
-                            if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; }
-                        };
-                    });
-                }
+            if (isPWA()) { installBtn.style.display = 'none'; } else {
+                if (isIOS()) { installBtn.style.display = 'block'; installBtn.onclick = () => { document.getElementById('ios-install-modal').style.display = 'flex'; }; } 
+                else { window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; installBtn.style.display = 'block'; installBtn.onclick = async () => { if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; } }; }); }
             }
             window.addEventListener('appinstalled', () => { deferredPrompt = null; installBtn.style.display = 'none'; });
 
             checkRemindersOnStartup();
         }
 
-        // --- 返回鍵防呆與動態彈窗攔截邏輯 ---
         window.addEventListener('popstate', function(e) {
             if (allowAppExit) return;
             history.pushState('app-trap', '', ''); 
 
             const openModals = Array.from(document.querySelectorAll('.modal-overlay')).filter(el => window.getComputedStyle(el).display === 'flex' || el.style.display === 'flex');
-            if (openModals.length > 0) {
-                openModals.forEach(m => closeModal(m.id));
-                return;
-            }
+            if (openModals.length > 0) { openModals.forEach(m => closeModal(m.id)); return; }
 
             const cardsTab = document.getElementById('tab-cards');
             if (!cardsTab.classList.contains('active-tab')) {
                 const historyTab = document.getElementById('tab-history');
                 if (historyTab.classList.contains('active-tab')) {
                     const selId = document.getElementById('history-card-select').value;
-                    if (selId && selId !== 'all' && !selId.startsWith('stats-')) {
-                        switchTab('cards', document.querySelectorAll('.nav-btn')[0], true);
-                        setTimeout(() => scrollToCard(selId), 50);
-                        return;
-                    }
+                    if (selId && selId !== 'all' && !selId.startsWith('stats-')) { switchTab('cards', document.querySelectorAll('.nav-btn')[0], true); setTimeout(() => scrollToCard(selId), 50); return; }
                 }
                 switchTab('cards', document.querySelectorAll('.nav-btn')[0]);
-                window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
-                return;
+                window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); return;
             }
 
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-            if (scrollTop > 5) {
-                window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
-                return;
-            }
+            if (scrollTop > 5) { window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); return; }
 
             showDialog('確定要離開電子票證管家嗎？', '離開程式', true, (res) => { if (res) confirmExitApp(); });
         });
@@ -513,10 +495,9 @@
             }
         };
 
-        // 僅存入 localStorage，不觸發下載
         const saveData = () => { localStorage.setItem(DB_KEY, JSON.stringify(appData)); updateHistorySelect(); renderHistory(); };
         
-        // 存入 localStorage 並觸發下載 json 備份檔
+        // 有實質變更時才觸發下載
         const triggerAutoBackup = () => { 
             appData.lastBackupTime = new Date().toISOString(); saveData(); 
             const d = new Date(), dateStr = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
@@ -571,23 +552,67 @@
         function closeModal(id) { const el = document.getElementById(id); if(el) el.style.display = 'none'; }
         
         function toggleOverview() {
-            appData.isOverviewCollapsed = !appData.isOverviewCollapsed; saveData();
+            appData.isOverviewCollapsed = !appData.isOverviewCollapsed; saveData(); // 介面狀態不觸發備份下載
             const content = document.getElementById('overview-content'), icon = document.getElementById('overview-toggle-icon');
             if (appData.isOverviewCollapsed) { content.style.display = 'none'; icon.style.transform = 'rotate(-90deg)'; } 
             else { content.style.display = 'block'; icon.style.transform = 'rotate(0deg)'; }
         }
 
-        // 僅使用 saveData()，不呼叫 triggerAutoBackup()
+        // 排序操作：儲存狀態重新渲染，但不觸發 triggerAutoBackup (下載 .json)
+        function handleSortChange() {
+            const sortType = document.getElementById('card-sort-select').value;
+            if (sortType === 'multi') {
+                openMultiSortModal();
+                // 如果取消面板，就還原為上一次的設定
+                document.getElementById('card-sort-select').value = appData.sortPreference === 'multi' ? 'smart' : appData.sortPreference; 
+            } else {
+                appData.sortPreference = sortType;
+                saveData(); renderCards();
+            }
+        }
+
         function resetCustomSort() {
             showDialog('確定要將自訂排序回復成「預設新增順序」嗎？', '重置確認', true, (res) => {
                 if(res) { appData.customOrder = []; getCustomOrder(); saveData(); renderCards(); }
             });
         }
         
-        // 僅使用 saveData()，不呼叫 triggerAutoBackup()
         function toggleBalanceSort() {
             appData.balanceSortDir = appData.balanceSortDir === 'desc' ? 'asc' : 'desc';
             saveData(); renderCards(); 
+        }
+
+        // --- 進階疊加排序邏輯 ---
+        function initMultiSortOptions() {
+            const options = `<option value="none">(無)</option><option value="type">🏷️ 卡片種類</option><option value="balance-desc">💰 餘額 (高到低)</option><option value="balance-asc">💰 餘額 (低到高)</option><option value="smart">🧠 智慧推薦 (需登錄/儲值)</option><option value="time-asc">🕒 新增順序 (舊到新)</option><option value="time-desc">🕒 新增順序 (新到舊)</option>`;
+            for (let i = 1; i <= 4; i++) document.getElementById(`ms-l${i}`).innerHTML = options;
+        }
+
+        function openMultiSortModal() {
+            const ms = appData.multiSort;
+            document.getElementById('ms-l1').value = ms.l1 || 'none';
+            document.getElementById('ms-l2').value = ms.l2 || 'none';
+            document.getElementById('ms-l3').value = ms.l3 || 'none';
+            document.getElementById('ms-l4').value = ms.l4 || 'none';
+            document.getElementById('multi-sort-modal').style.display = 'flex';
+        }
+
+        function cancelMultiSort() {
+            closeModal('multi-sort-modal');
+            document.getElementById('card-sort-select').value = appData.sortPreference;
+        }
+
+        function saveMultiSort() {
+            appData.multiSort = {
+                l1: document.getElementById('ms-l1').value,
+                l2: document.getElementById('ms-l2').value,
+                l3: document.getElementById('ms-l3').value,
+                l4: document.getElementById('ms-l4').value
+            };
+            appData.sortPreference = 'multi';
+            document.getElementById('card-sort-select').value = 'multi';
+            closeModal('multi-sort-modal');
+            saveData(); renderCards(); // 儲存偏好但不觸發下載
         }
 
         // --- 核心功能 ---
@@ -776,7 +801,7 @@
 
         function renderCards() {
             const backupInfo = document.getElementById('last-backup-info'), cont = document.getElementById('cards-container'), over = document.getElementById('overview-container'), tool = document.getElementById('sort-toolbar');
-            backupInfo.innerHTML = appData.lastBackupTime ? `✅ 已於 <b>${formatDate(appData.lastBackupTime)}</b> 啟動自動下載備份` : '';
+            backupInfo.innerHTML = appData.lastBackupTime ? `✅ 已於 <b>${formatDate(appData.lastBackupTime)}</b> 下載備份` : '';
             backupInfo.style.display = appData.lastBackupTime ? 'block' : 'none';
             
             if (!appData.cards.length) { over.style.display = 'none'; tool.style.display = 'none'; cont.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding: 50px 20px;"><div style="font-size:40px; margin-bottom:10px;">💳</div>無卡片紀錄，請至系統設定建立</div>'; return; }
@@ -785,22 +810,16 @@
             if (appData.isOverviewCollapsed) { document.getElementById('overview-content').style.display = 'none'; document.getElementById('overview-toggle-icon').style.transform = 'rotate(-90deg)'; } 
             else { document.getElementById('overview-content').style.display = 'block'; document.getElementById('overview-toggle-icon').style.transform = 'rotate(0deg)'; }
 
-            const sortType = document.getElementById('card-sort-select').value;
-            if (appData.sortPreference !== sortType) { appData.sortPreference = sortType; localStorage.setItem(DB_KEY, JSON.stringify(appData)); }
-            
+            const sortType = appData.sortPreference;
             document.getElementById('reset-sort-btn').style.display = sortType === 'custom' ? 'block' : 'none';
             const balBtn = document.getElementById('balance-sort-btn');
             if (balBtn) { balBtn.style.display = sortType === 'balance' ? 'block' : 'none'; if (sortType === 'balance') balBtn.innerHTML = appData.balanceSortDir === 'asc' ? '⬆️ 低到高' : '⬇️ 高到低'; }
 
-            // 搜尋文字過濾
+            // 搜尋過濾
             const searchQ = document.getElementById('card-search').value.toLowerCase().trim();
             let filteredCards = appData.cards;
             if (searchQ) {
-                filteredCards = appData.cards.filter(c => 
-                    c.name.toLowerCase().includes(searchQ) || 
-                    (c.creditNum && c.creditNum.includes(searchQ)) || 
-                    (c.transitNum && c.transitNum.includes(searchQ))
-                );
+                filteredCards = appData.cards.filter(c => c.name.toLowerCase().includes(searchQ) || (c.creditNum && c.creditNum.includes(searchQ)) || (c.transitNum && c.transitNum.includes(searchQ)));
             }
 
             let sorted = [...filteredCards];
@@ -811,6 +830,28 @@
             else if (sortType === 'balance') { if (appData.balanceSortDir === 'desc') sorted.sort((a,b) => b.balance - a.balance); else sorted.sort((a,b) => a.balance - b.balance); }
             else if (sortType === 'type') sorted.sort((a,b) => a.type.localeCompare(b.type));
             else if (sortType === 'custom') { const o = getCustomOrder(); sorted.sort((a,b) => o.indexOf(a.id) - o.indexOf(b.id)); }
+            else if (sortType === 'multi') {
+                const criteria = appData.multiSort;
+                sorted.sort((a, b) => {
+                    for (let i = 1; i <= 4; i++) {
+                        const crit = criteria[`l${i}`];
+                        if (!crit || crit === 'none') continue;
+                        let res = 0;
+                        if (crit === 'type') res = a.type.localeCompare(b.type);
+                        else if (crit === 'balance-desc') res = b.balance - a.balance;
+                        else if (crit === 'balance-asc') res = a.balance - b.balance;
+                        else if (crit === 'time-asc') res = parseInt(a.id) - parseInt(b.id);
+                        else if (crit === 'time-desc') res = parseInt(b.id) - parseInt(a.id);
+                        else if (crit === 'smart') {
+                            const rA = (a.type === '悠遊卡' && a.isJCB !== false) ? getSortRegs(a.id) : 999;
+                            const rB = (b.type === '悠遊卡' && b.isJCB !== false) ? getSortRegs(b.id) : 999;
+                            res = rA - rB;
+                        }
+                        if (res !== 0) return res;
+                    }
+                    return 0; 
+                });
+            }
 
             const viewData = sorted.map(c => {
                 const isJCB = c.type === '悠遊卡' && c.isJCB !== false;
@@ -839,29 +880,24 @@
                     <td class="val-num" style="text-align:center; color:var(--purple-dark); vertical-align:middle;">${v.displayRegs !== null ? v.displayRegs : '<span style="color:var(--text-muted);">-</span>'}</td></tr>`;
                 }).join('');
 
-            // 修改處：在 drop 和 touchend 事件中，只呼叫 saveData() 與 renderCards()，不呼叫 triggerAutoBackup()
             document.querySelectorAll('.sortable-row').forEach(row => {
                 row.addEventListener('dragstart', e => { window.isDragging = true; row.classList.add('dragging'); e.dataTransfer.setData('text/plain', row.dataset.id); });
                 row.addEventListener('dragend', () => { row.classList.remove('dragging'); setTimeout(() => window.isDragging = false, 100); });
                 row.addEventListener('dragover', e => { e.preventDefault(); const drg = document.querySelector('.dragging'); if (!drg || drg === row) return; const rect = row.getBoundingClientRect(); row.style.borderTop = (e.clientY - rect.y - rect.height/2 < 0) ? '2px solid var(--primary-color)' : ''; row.style.borderBottom = (e.clientY - rect.y - rect.height/2 > 0) ? '2px solid var(--primary-color)' : ''; });
                 row.addEventListener('dragleave', () => { row.style.borderTop = ''; row.style.borderBottom = ''; });
-                row.addEventListener('drop', e => { e.preventDefault(); row.style.borderTop = ''; row.style.borderBottom = ''; const drg = document.querySelector('.dragging'); if (!drg || drg === row) return; const rect = row.getBoundingClientRect(); if(e.clientY - rect.y - rect.height/2 > 0) row.after(drg); else row.before(drg); appData.customOrder = Array.from(document.querySelectorAll('.sortable-row')).map(r => r.dataset.id); document.getElementById('card-sort-select').value = 'custom'; saveData(); renderCards(); });
+                row.addEventListener('drop', e => { e.preventDefault(); row.style.borderTop = ''; row.style.borderBottom = ''; const drg = document.querySelector('.dragging'); if (!drg || drg === row) return; const rect = row.getBoundingClientRect(); if(e.clientY - rect.y - rect.height/2 > 0) row.after(drg); else row.before(drg); appData.customOrder = Array.from(document.querySelectorAll('.sortable-row')).map(r => r.dataset.id); document.getElementById('card-sort-select').value = 'custom'; appData.sortPreference = 'custom'; saveData(); renderCards(); }); // 拖曳只存狀態，不下載
                 const handle = row.querySelector('.drag-handle');
                 handle.addEventListener('touchstart', e => { e.preventDefault(); window.isDragging = true; row.classList.add('dragging'); }, {passive: false});
                 handle.addEventListener('touchmove', e => { if (!row.classList.contains('dragging')) return; e.preventDefault(); const touch = e.touches[0]; const target = document.elementFromPoint(touch.clientX, touch.clientY); if (!target) return; const targetRow = target.closest('.sortable-row'); if (targetRow && targetRow !== row) { const rect = targetRow.getBoundingClientRect(); const mid = rect.y + rect.height / 2; if (touch.clientY > mid) targetRow.after(row); else targetRow.before(row); } }, {passive: false});
-                handle.addEventListener('touchend', e => { if (!row.classList.contains('dragging')) return; row.classList.remove('dragging'); setTimeout(() => window.isDragging = false, 100); appData.customOrder = Array.from(document.querySelectorAll('.sortable-row')).map(r => r.dataset.id); document.getElementById('card-sort-select').value = 'custom'; saveData(); renderCards(); });
+                handle.addEventListener('touchend', e => { if (!row.classList.contains('dragging')) return; row.classList.remove('dragging'); setTimeout(() => window.isDragging = false, 100); appData.customOrder = Array.from(document.querySelectorAll('.sortable-row')).map(r => r.dataset.id); document.getElementById('card-sort-select').value = 'custom'; appData.sortPreference = 'custom'; saveData(); renderCards(); }); // 觸控拖曳只存狀態，不下載
                 handle.addEventListener('touchcancel', e => { row.classList.remove('dragging'); window.isDragging = false; });
             });
 
-            if (viewData.length === 0 && searchQ) {
-                cont.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding: 30px;">找不到符合「${searchQ}」的卡片</div>`;
-                return;
-            }
+            if (viewData.length === 0 && searchQ) { cont.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding: 30px;">找不到符合「${searchQ}」的卡片</div>`; return; }
 
             cont.innerHTML = viewData.map(v => {
                 const specialCardCls = v.isUrgent ? 'card-urgent' : (v.needsTopup ? 'card-warning' : '');
-                const bannerHtml = v.isUrgent ? `<div class="banner-urgent">⚠️ 月底將至！本月已登錄，請盡速完成儲值</div>` : 
-                                  (v.needsTopup ? `<div class="banner-warning">💡 溫馨提示：本月已登錄，請記得去儲值</div>` : '');
+                const bannerHtml = v.isUrgent ? `<div class="banner-urgent">⚠️ 月底將至！本月已登錄，請盡速完成儲值</div>` : (v.needsTopup ? `<div class="banner-warning">💡 溫馨提示：本月已登錄，請記得去儲值</div>` : '');
 
                 return `
                 <div class="card-item ${specialCardCls}" id="card-view-${v.id}">
@@ -894,18 +930,15 @@
             if (searchQ) {
                 txs = txs.filter(t => {
                     const c = appData.cards.find(card => card.id === t.cardId);
-                    const cName = c ? c.name.toLowerCase() : '';
-                    return (t.memo && t.memo.toLowerCase().includes(searchQ)) || cName.includes(searchQ);
+                    return (t.memo && t.memo.toLowerCase().includes(searchQ)) || (c && c.name.toLowerCase().includes(searchQ));
                 });
             }
 
             const groups = {};
             txs.forEach(t => {
-                const d = new Date(t.timestamp);
-                const key = `${d.getFullYear()}年${pad(d.getMonth()+1)}月`;
+                const d = new Date(t.timestamp); const key = `${d.getFullYear()}年${pad(d.getMonth()+1)}月`;
                 if (!groups[key]) groups[key] = { count: 0, items: [] };
-                groups[key].count++;
-                groups[key].items.push(t);
+                groups[key].count++; groups[key].items.push(t);
             });
 
             let html = `
@@ -936,20 +969,14 @@
             const selId = document.getElementById('history-card-select').value;
             const searchQ = document.getElementById('history-search').value.toLowerCase().trim();
             
-            if (selId === 'stats-reg' || selId === 'stats-topup') {
-                renderStatsView(selId === 'stats-reg' ? '登錄' : '儲值', searchQ);
-                return;
-            }
+            if (selId === 'stats-reg' || selId === 'stats-topup') { renderStatsView(selId === 'stats-reg' ? '登錄' : '儲值', searchQ); return; }
 
             let list = selId && selId !== 'all' ? appData.transactions.filter(t => t.cardId === selId) : appData.transactions;
             
             if (searchQ) {
                 list = list.filter(t => {
                     const c = appData.cards.find(card => card.id === t.cardId);
-                    const cName = c ? c.name.toLowerCase() : '';
-                    return (t.memo && t.memo.toLowerCase().includes(searchQ)) || 
-                           (t.type && t.type.toLowerCase().includes(searchQ)) || 
-                           cName.includes(searchQ);
+                    return (t.memo && t.memo.toLowerCase().includes(searchQ)) || (t.type && t.type.toLowerCase().includes(searchQ)) || (c && c.name.toLowerCase().includes(searchQ));
                 });
             }
 
