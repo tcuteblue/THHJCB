@@ -190,15 +190,20 @@
         
         .multi-sort-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
         .multi-sort-row label { flex: 0 0 60px; font-size: 14px; color: var(--primary-dark); font-weight: bold; margin-bottom: 0; }
+        
+        /* 新增多重排序啟用的高亮樣式 */
+        .btn-multi-active { background-color: var(--primary-light) !important; color: var(--primary-dark) !important; border: 2px solid var(--primary-color) !important; box-shadow: 0 4px 0 var(--primary-dark) !important; }
     </style>
 </head>
 <body>
     <div class="header">電子票證管家</div>
 
+    <!-- Tab: 我的卡片 -->
     <div id="tab-cards" class="tab-content active-tab">
         <button id="install-app-btn" class="btn-install" style="display: none;">📲 安裝為 APP 桌面捷徑</button>
         <div id="last-backup-info" class="backup-notice"></div>
         
+        <!-- 首頁搜尋列 -->
         <div class="toolbar">
             <input type="text" id="card-search" class="form-control" placeholder="🔍 搜尋卡片名稱、號碼..." onkeyup="renderCards()" style="margin-bottom: 0;">
         </div>
@@ -209,10 +214,11 @@
                 <option value="smart">🧠 智慧推薦 (優先登錄/儲值)</option>
                 <option value="default">🕒 預設排序 (新增順序)</option>
                 <option value="balance">💰 卡片餘額 (金額高低切換)</option>
-                <option value="type">🏷️ 卡片種類 (依票證類型)</option>
-                <option value="custom">✋ 自訂排序 (拖曳總覽表格)</option>
-                <option value="multi" style="color: var(--primary-dark); font-weight: bold;">🎛️ 自訂多重疊加排序...</option>
+                <option value="type">🏷️ 卡片種類 (預設順序)</option>
+                <option value="custom">✋ 自訂排序 (手動拖曳總覽)</option>
             </select>
+            <!-- 將多重排序獨立為按鈕，方便隨時開啟與調整 -->
+            <button id="multi-sort-btn" class="btn-cancel-modal btn-3d" style="padding: 10px 14px; border-radius: 10px; flex:none; margin: 0 0 0 8px; font-size: 14px;" onclick="openMultiSortModal()" title="進階多重疊加排序">🎛️</button>
             <button id="reset-sort-btn" class="btn-cancel-modal btn-3d" style="display:none; padding: 10px 14px; border-radius: 10px; flex:none; margin: 0 0 0 8px; font-size: 14px;" onclick="resetCustomSort()" title="重置排序">🔄</button>
             <button id="balance-sort-btn" class="btn-cancel-modal btn-3d" style="display:none; padding: 10px 14px; border-radius: 10px; flex:none; margin: 0 0 0 8px; font-size: 14px;" onclick="toggleBalanceSort()"></button>
         </div>
@@ -229,16 +235,19 @@
         <div id="cards-container"></div>
     </div>
 
+    <!-- Tab: 歷史記錄 -->
     <div id="tab-history" class="tab-content">
         <h3 style="margin-top:0; color:var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom:10px; font-size: 20px;">📜 歷史記錄與統計</h3>
         <div class="form-group">
             <input type="text" id="history-search" class="form-control" placeholder="🔍 搜尋紀錄、卡片、明細..." onkeyup="renderHistory()" style="margin-bottom: 12px;">
             <select id="history-card-select" class="form-control" onchange="renderHistory()">
-                </select>
+                <!-- JS 動態產生選項 -->
+            </select>
         </div>
         <div id="history-container"></div>
     </div>
 
+    <!-- Tab: 系統設定 -->
     <div id="tab-settings" class="tab-content">
         <div class="card-item" style="padding:20px;">
             <h3 style="margin-top:0; color:var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom:10px; font-size: 18px;">✨ 新增卡片</h3>
@@ -279,12 +288,14 @@
         </div>
     </div>
 
+    <!-- Navigation -->
     <div class="bottom-nav">
         <button class="nav-btn active" onclick="switchTab('cards', this)"><div class="nav-icon">💳</div><span>我的卡片</span></button>
         <button class="nav-btn" onclick="switchTab('history', this)"><div class="nav-icon">📊</div><span>歷史記錄</span></button>
         <button class="nav-btn" onclick="switchTab('settings', this)"><div class="nav-icon">⚙️</div><span>系統設定</span></button>
     </div>
 
+    <!-- 通用確認與警告對話框 -->
     <div class="modal-overlay" id="dialog-modal" style="z-index: 100;">
         <div class="modal" style="text-align: center; max-width: 300px; padding: 25px 20px;">
             <h3 id="dialog-title" style="color: var(--primary-color); font-size: 20px; border: none; margin-bottom: 10px;">提示</h3>
@@ -293,6 +304,7 @@
         </div>
     </div>
 
+    <!-- 啟動提醒視窗 -->
     <div class="modal-overlay" id="startup-reminder-modal" style="z-index: 50;">
         <div class="modal" style="text-align: center; max-width: 320px;">
             <h3 style="color: var(--warning-color); font-size: 20px; border: none; margin-bottom: 10px;">💡 儲值提醒</h3>
@@ -302,6 +314,7 @@
         </div>
     </div>
 
+    <!-- iOS 安裝教學彈窗 -->
     <div class="modal-overlay" id="ios-install-modal" style="z-index: 60;">
         <div class="modal" style="text-align: center; max-width: 320px;">
             <h3 style="color: var(--primary-color); font-size: 20px; border: none; margin-bottom: 10px;">📲 安裝至主畫面</h3>
@@ -315,6 +328,7 @@
         </div>
     </div>
 
+    <!-- 儲值選項視窗 -->
     <div class="modal-overlay" id="topup-option-modal" style="z-index: 25;">
         <div class="modal" style="text-align: center; max-width: 320px;">
             <h3 style="color: var(--primary-color); font-size: 20px; border:none; margin-bottom: 15px;">選擇儲值金額</h3>
@@ -327,10 +341,11 @@
         </div>
     </div>
 
+    <!-- 進階疊加排序面板 -->
     <div class="modal-overlay" id="multi-sort-modal" style="z-index: 40;">
         <div class="modal">
             <h3 style="color: var(--primary-color); font-size: 20px; border-bottom: 2px solid var(--bg-color); margin-bottom: 20px;">🎛️ 進階疊加排序</h3>
-            <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">請依序設定您想要的排列優先權，當上層條件相同時，系統會自動套用下層條件進行細排。</p>
+            <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">請依序設定排列優先權。當上層條件相同時，將自動套用下層條件進行細排。</p>
             
             <div class="multi-sort-row"><label>優先 1</label><select id="ms-l1" class="form-control" style="padding: 10px;"></select></div>
             <div class="multi-sort-row"><label>優先 2</label><select id="ms-l2" class="form-control" style="padding: 10px;"></select></div>
@@ -344,6 +359,7 @@
         </div>
     </div>
 
+    <!-- 輸入扣款與自訂儲值視窗 -->
     <div class="modal-overlay" id="action-modal">
         <div class="modal">
             <h3 id="modal-title">輸入金額</h3>
@@ -356,6 +372,7 @@
         </div>
     </div>
 
+    <!-- 編輯紀錄視窗 -->
     <div class="modal-overlay" id="edit-modal">
         <div class="modal">
             <h3>編輯記錄</h3><input type="hidden" id="edit-tx-id">
@@ -369,6 +386,7 @@
         </div>
     </div>
 
+    <!-- 編輯卡片視窗 -->
     <div class="modal-overlay" id="edit-card-modal">
         <div class="modal">
             <h3>編輯卡片資訊</h3><input type="hidden" id="edit-card-id">
@@ -399,7 +417,7 @@
     <script>
         // --- 核心變數與初始化 ---
         const DB_KEY = 'TransitApp_Data';
-        let appData = { cards: [], transactions: [], customOrder: [], isOverviewCollapsed: false, multiSort: {l1: 'type', l2: 'balance-desc', l3: 'none', l4: 'none'} };
+        let appData = { cards: [], transactions: [], customOrder: [], isOverviewCollapsed: false, multiSort: {l1: 'type-default', l2: 'balance-desc', l3: 'none', l4: 'none'} };
         let deferredPrompt, currentAction = { cardId: null, type: null };
         let allowAppExit = false; 
 
@@ -435,7 +453,7 @@
 
             if (!appData.sortPreference) appData.sortPreference = 'default';
             if (!appData.balanceSortDir) appData.balanceSortDir = 'desc'; 
-            if (!appData.multiSort) appData.multiSort = {l1: 'type', l2: 'balance-desc', l3: 'none', l4: 'none'};
+            if (!appData.multiSort) appData.multiSort = {l1: 'type-default', l2: 'balance-desc', l3: 'none', l4: 'none'};
             
             document.getElementById('card-sort-select').value = appData.sortPreference;
             toggleJcbUI('new-card');
@@ -561,14 +579,8 @@
         // 排序操作：儲存狀態重新渲染，但不觸發 triggerAutoBackup (下載 .json)
         function handleSortChange() {
             const sortType = document.getElementById('card-sort-select').value;
-            if (sortType === 'multi') {
-                openMultiSortModal();
-                // 如果取消面板，就還原為上一次的設定
-                document.getElementById('card-sort-select').value = appData.sortPreference === 'multi' ? 'smart' : appData.sortPreference; 
-            } else {
-                appData.sortPreference = sortType;
-                saveData(); renderCards();
-            }
+            appData.sortPreference = sortType;
+            saveData(); renderCards();
         }
 
         function resetCustomSort() {
@@ -584,22 +596,38 @@
 
         // --- 進階疊加排序邏輯 ---
         function initMultiSortOptions() {
-            const options = `<option value="none">(無)</option><option value="type">🏷️ 卡片種類</option><option value="balance-desc">💰 餘額 (高到低)</option><option value="balance-asc">💰 餘額 (低到高)</option><option value="smart">🧠 智慧推薦 (需登錄/儲值)</option><option value="time-asc">🕒 新增順序 (舊到新)</option><option value="time-desc">🕒 新增順序 (新到舊)</option>`;
+            // 加入細分的種類排序選項
+            const options = `
+                <option value="none">(無)</option>
+                <option value="type-default">🏷️ 卡片種類 (預設: 悠/愛/一)</option>
+                <option value="type-easy">🏷️ 卡片種類 (悠遊卡優先)</option>
+                <option value="type-ipass">🏷️ 卡片種類 (一卡通優先)</option>
+                <option value="type-icash">🏷️ 卡片種類 (愛金卡優先)</option>
+                <option value="balance-desc">💰 餘額 (高到低)</option>
+                <option value="balance-asc">💰 餘額 (低到高)</option>
+                <option value="smart">🧠 智慧推薦 (需登錄/儲值優先)</option>
+                <option value="time-asc">🕒 新增順序 (舊到新)</option>
+                <option value="time-desc">🕒 新增順序 (新到舊)</option>
+            `;
             for (let i = 1; i <= 4; i++) document.getElementById(`ms-l${i}`).innerHTML = options;
         }
 
         function openMultiSortModal() {
             const ms = appData.multiSort;
-            document.getElementById('ms-l1').value = ms.l1 || 'none';
-            document.getElementById('ms-l2').value = ms.l2 || 'none';
-            document.getElementById('ms-l3').value = ms.l3 || 'none';
-            document.getElementById('ms-l4').value = ms.l4 || 'none';
+            // 確保舊版資料相容
+            let l1 = ms.l1 || 'none', l2 = ms.l2 || 'none', l3 = ms.l3 || 'none', l4 = ms.l4 || 'none';
+            if(l1 === 'type') l1 = 'type-default'; if(l2 === 'type') l2 = 'type-default';
+            if(l3 === 'type') l3 = 'type-default'; if(l4 === 'type') l4 = 'type-default';
+
+            document.getElementById('ms-l1').value = l1;
+            document.getElementById('ms-l2').value = l2;
+            document.getElementById('ms-l3').value = l3;
+            document.getElementById('ms-l4').value = l4;
             document.getElementById('multi-sort-modal').style.display = 'flex';
         }
 
         function cancelMultiSort() {
             closeModal('multi-sort-modal');
-            document.getElementById('card-sort-select').value = appData.sortPreference;
         }
 
         function saveMultiSort() {
@@ -610,9 +638,18 @@
                 l4: document.getElementById('ms-l4').value
             };
             appData.sortPreference = 'multi';
-            document.getElementById('card-sort-select').value = 'multi';
+            document.getElementById('card-sort-select').value = 'multi'; // 為了相容性，給 select 塞入隱藏值
             closeModal('multi-sort-modal');
             saveData(); renderCards(); // 儲存偏好但不觸發下載
+        }
+        
+        // 取得卡片種類權重輔助函式
+        function getTypeWeight(cardType, sortStrategy) {
+            if (sortStrategy === 'type-easy') return cardType === '悠遊卡' ? 1 : (cardType === '一卡通' ? 2 : 3);
+            if (sortStrategy === 'type-ipass') return cardType === '一卡通' ? 1 : (cardType === '悠遊卡' ? 2 : 3);
+            if (sortStrategy === 'type-icash') return cardType === '愛金卡' ? 1 : (cardType === '悠遊卡' ? 2 : 3);
+            // 預設：悠遊卡 -> 愛金卡 -> 一卡通
+            return cardType === '悠遊卡' ? 1 : (cardType === '愛金卡' ? 2 : 3);
         }
 
         // --- 核心功能 ---
@@ -810,7 +847,24 @@
             if (appData.isOverviewCollapsed) { document.getElementById('overview-content').style.display = 'none'; document.getElementById('overview-toggle-icon').style.transform = 'rotate(-90deg)'; } 
             else { document.getElementById('overview-content').style.display = 'block'; document.getElementById('overview-toggle-icon').style.transform = 'rotate(0deg)'; }
 
-            const sortType = appData.sortPreference;
+            let sortType = appData.sortPreference;
+            
+            // 確保 select 顯示正確的值 (處理多重排序隱藏值)
+            const sortSelect = document.getElementById('card-sort-select');
+            let hasOption = Array.from(sortSelect.options).some(opt => opt.value === sortType);
+            if (!hasOption && sortType === 'multi') {
+                const opt = document.createElement('option'); opt.value = 'multi'; opt.text = '🎛️ (已啟用多重疊加排序)'; opt.style.display = 'none'; sortSelect.add(opt);
+            }
+            sortSelect.value = sortType;
+            
+            // 控制多重排序按鈕外觀
+            const multiBtn = document.getElementById('multi-sort-btn');
+            if (sortType === 'multi') {
+                multiBtn.classList.add('btn-multi-active');
+            } else {
+                multiBtn.classList.remove('btn-multi-active');
+            }
+
             document.getElementById('reset-sort-btn').style.display = sortType === 'custom' ? 'block' : 'none';
             const balBtn = document.getElementById('balance-sort-btn');
             if (balBtn) { balBtn.style.display = sortType === 'balance' ? 'block' : 'none'; if (sortType === 'balance') balBtn.innerHTML = appData.balanceSortDir === 'asc' ? '⬆️ 低到高' : '⬇️ 高到低'; }
@@ -828,7 +882,7 @@
             
             if (sortType === 'smart') sorted.sort((a,b) => { const rA = (a.type === '悠遊卡' && a.isJCB !== false) ? getSortRegs(a.id) : 999, rB = (b.type === '悠遊卡' && b.isJCB !== false) ? getSortRegs(b.id) : 999; return rA !== rB ? rA - rB : a.balance - b.balance; });
             else if (sortType === 'balance') { if (appData.balanceSortDir === 'desc') sorted.sort((a,b) => b.balance - a.balance); else sorted.sort((a,b) => a.balance - b.balance); }
-            else if (sortType === 'type') sorted.sort((a,b) => a.type.localeCompare(b.type));
+            else if (sortType === 'type') sorted.sort((a,b) => getTypeWeight(a.type, 'type-default') - getTypeWeight(b.type, 'type-default')); // 修改預設種類排序
             else if (sortType === 'custom') { const o = getCustomOrder(); sorted.sort((a,b) => o.indexOf(a.id) - o.indexOf(b.id)); }
             else if (sortType === 'multi') {
                 const criteria = appData.multiSort;
@@ -837,7 +891,7 @@
                         const crit = criteria[`l${i}`];
                         if (!crit || crit === 'none') continue;
                         let res = 0;
-                        if (crit === 'type') res = a.type.localeCompare(b.type);
+                        if (crit.startsWith('type')) res = getTypeWeight(a.type, crit) - getTypeWeight(b.type, crit);
                         else if (crit === 'balance-desc') res = b.balance - a.balance;
                         else if (crit === 'balance-asc') res = a.balance - b.balance;
                         else if (crit === 'time-asc') res = parseInt(a.id) - parseInt(b.id);
