@@ -193,6 +193,15 @@
         
         /* 新增多重排序啟用的高亮樣式 */
         .btn-multi-active { background-color: var(--primary-light) !important; color: var(--primary-dark) !important; border: 2px solid var(--primary-color) !important; box-shadow: 0 4px 0 var(--primary-dark) !important; }
+
+        /* 雙重備份 2x2 對稱按鈕排版 */
+        .backup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+        .btn-grid { padding: 16px 8px; border-radius: 16px; font-size: 16px; font-weight: 900; border: none; cursor: pointer; text-align: center; display: flex; justify-content: center; align-items: center; gap: 6px; }
+        .btn-grid:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-c-bak { background: linear-gradient(135deg, #3498db, #2980b9); color: white; box-shadow: 0 4px 0 #1f618d; }
+        .btn-c-res { background: linear-gradient(135deg, #16a085, #1abc9c); color: white; box-shadow: 0 4px 0 #0e6655; }
+        .btn-l-bak { background: linear-gradient(135deg, #607D8B, #455A64); color: white; box-shadow: 0 4px 0 #37474f; }
+        .btn-l-res { background: linear-gradient(135deg, #a2d9ce, #73c6b6); color: #0b5345; box-shadow: 0 4px 0 #76d7c4; }
     </style>
 </head>
 <body>
@@ -278,13 +287,19 @@
         </div>
 
         <div class="card-item" style="margin-top: 20px; padding:20px;">
-            <h3 style="margin-top:0; color:var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom:10px; font-size: 18px;">⚙️ 系統與備份</h3>
-            <button class="btn-block btn-backup btn-3d" onclick="exportBackup(false)">手動匯出備份檔 (.json)</button>
-            <button class="btn-block btn-green btn-3d" onclick="exportTxt()">📝 匯出卡片資訊 (.txt)</button>
-            <div class="form-group" style="margin-top: 20px;">
-                <label>匯入備份檔 (將覆蓋現有資料)</label>
-                <input type="file" id="import-file" class="form-control" accept=".json" onchange="importBackup(event)" style="font-size:14px; padding:10px;">
+            <h3 style="margin-top:0; color:var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom:10px; font-size: 18px;">⚙️ 系統備份與還原</h3>
+            
+            <div class="backup-grid">
+                <button class="btn-grid btn-c-bak btn-3d" id="btn-cloud-backup" onclick="cloudBackup(false)">☁️ 雲端備份</button>
+                <button class="btn-grid btn-c-res btn-3d" id="btn-cloud-restore" onclick="cloudRestore()">☁️ 雲端還原</button>
+                <button class="btn-grid btn-l-bak btn-3d" onclick="exportBackup(true)">📥 本機備份</button>
+                <button class="btn-grid btn-l-res btn-3d" onclick="document.getElementById('import-file').click()">📤 本機還原</button>
             </div>
+            
+            <button class="btn-block btn-green btn-3d" style="margin-top: 15px;" onclick="exportTxt()">📝 匯出卡片純文字資訊 (.txt)</button>
+
+            <!-- 隱藏的檔案上傳元件 -->
+            <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importBackup(event)">
         </div>
     </div>
 
@@ -514,14 +529,98 @@
         };
 
         const saveData = () => { localStorage.setItem(DB_KEY, JSON.stringify(appData)); updateHistorySelect(); renderHistory(); };
-        
-        // 有實質變更時才觸發下載
+        // === 雲端備份變數 ===
+        const gasUrl = 'https://script.google.com/macros/s/AKfycbw0wAnCPZkw3nlyx0Eg08Ejk49oG_itD82PqH9IP4X7S4oR5br1NTCmlUJsNfME2kbZ/exec';
+        let isCloudSyncing = ''; 
+        let cloudBackupTimer = null;
+
+        // === 1. 自動備份改為：背景推送至雲端 ===
         const triggerAutoBackup = () => { 
+            appData.lastBackupTime = new Date().toISOString(); 
+            saveData(); 
+            // 防抖機制：延遲 1.5 秒執行，避免連續輸入時重複呼叫 API
+            if (cloudBackupTimer) clearTimeout(cloudBackupTimer);
+            cloudBackupTimer = setTimeout(() => { cloudBackup(true); }, 1500);
+        };
+
+        // === 2. 本機備份 (保留給手動點擊使用) ===
+        function exportBackup(isManual = true) {
             appData.lastBackupTime = new Date().toISOString(); saveData(); 
             const d = new Date(), dateStr = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(appData)], { type: "application/json" })); a.download = `票證備份_${dateStr}.json`;
             document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
-        };
+            if(isManual) showDialog('本機備份檔下載程序已啟動！', '備份完成');
+        }
+
+        // === 3. 雲端備份 (GAS) ===
+        async function cloudBackup(isAuto = false) {
+            const btn = document.getElementById('btn-cloud-backup');
+            if (!isAuto) {
+                isCloudSyncing = 'backup';
+                if (btn) { btn.disabled = true; btn.innerHTML = '⏳ 備份中...'; }
+            }
+            try {
+                const payload = {
+                    action: "auto_backup",
+                    fileName: "電子票證管家_雲端備份.json", // 專屬檔名
+                    backupData: appData
+                };
+                const response = await fetch(gasUrl, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    appData.lastBackupTime = new Date().toISOString(); saveData(); renderCards();
+                    if (!isAuto) showDialog("✅ 雲端備份成功！\n資料已安全存入 Google Drive。", "備份成功");
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (e) {
+                if (!isAuto) showDialog("❌ 雲端備份失敗：" + e.message, "錯誤");
+            } finally {
+                if (!isAuto) {
+                    isCloudSyncing = '';
+                    if (btn) { btn.disabled = false; btn.innerHTML = '☁️ 雲端備份'; }
+                }
+            }
+        }
+
+        // === 4. 雲端還原 (GAS) ===
+        function cloudRestore() {
+            showDialog("⚠️ 警告：雲端還原將會覆蓋您目前的本機資料！\n\n確定要進行還原嗎？", "雲端還原確認", true, async (res) => {
+                if (!res) return;
+                
+                const btn = document.getElementById('btn-cloud-restore');
+                isCloudSyncing = 'restore';
+                if (btn) { btn.disabled = true; btn.innerHTML = '⏳ 還原中...'; }
+                
+                try {
+                    const payload = { action: "restore_from_cloud", fileName: "電子票證管家_雲端備份.json" };
+                    const response = await fetch(gasUrl, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+                    const result = await response.json();
+                    
+                    if (result.status === 'success' && result.data) {
+                        const cloudData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
+                        if (cloudData.cards && cloudData.transactions) {
+                            appData = { ...appData, ...cloudData };
+                            saveData();
+                            showDialog("✅ 雲端資料已成功還原！\n點擊確定後將重新載入頁面。", "還原成功", false, () => {
+                                window.location.reload(); 
+                            });
+                        } else {
+                            throw new Error("備份檔格式不符");
+                        }
+                    } else {
+                        throw new Error(result.message || "雲端找不到備份檔");
+                    }
+                } catch (e) {
+                    showDialog("❌ 還原失敗：" + e.message, "錯誤");
+                } finally {
+                    isCloudSyncing = '';
+                    if (btn) { btn.disabled = false; btn.innerHTML = '☁️ 雲端還原'; }
+                }
+            });
+        }
+        
 
         // --- 工具函式 ---
         const pad = n => n.toString().padStart(2, '0');
@@ -1077,12 +1176,7 @@
             a.download = `卡片資訊匯出_${currentYear}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.txt`;
             document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
         }
-
-        function exportBackup(isAuto) {
-            if (!isAuto) triggerAutoBackup();
-            if (!isAuto) showDialog('備份檔下載程序已啟動！', '備份完成');
-        }
-
+        
         function importBackup(e) {
             const f = e.target.files[0]; if (!f) return; const r = new FileReader();
             r.onload = ev => { 
