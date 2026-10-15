@@ -1175,6 +1175,9 @@
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: "text/plain;charset=utf-8" })); 
             a.download = `卡片資訊匯出_${currentYear}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.txt`;
             document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+            
+            // 🎯 新增：跳出匯出完成提示
+            showDialog('卡片純文字資訊已成功匯出！', '匯出完成');
         }
         
         function importBackup(e) {
