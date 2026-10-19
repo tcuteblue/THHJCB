@@ -150,10 +150,6 @@
         .modal h3 { margin-top: 0; font-size: 20px; color: var(--text-main); border-bottom: 2px solid var(--bg-color); padding-bottom: 12px; margin-bottom: 18px;}
         .modal-buttons { display: flex; gap: 12px; margin-top: 25px; flex-wrap: wrap; }
 
-        /* 候選詞樣式 */
-        .memo-chip { background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 12px; font-size: 13px; cursor: pointer; transition: all 0.2s; user-select: none; }
-        .memo-chip:active { background: var(--primary-light); border-color: var(--primary-color); color: var(--primary-dark); }
-
         /* History Items */
         .history-item { background: var(--card-bg); padding: 16px; border-radius: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0,0,0,0.03);}
         .history-left { display: flex; flex-direction: column; flex: 1; }
@@ -385,9 +381,10 @@
             <div class="form-group"><label>金額</label><input type="number" id="modal-amount" class="form-control" placeholder="請輸入金額"></div>
             <div class="form-group">
                 <label>消費明細 (選填)</label>
-                <input type="text" id="modal-memo" class="form-control" placeholder="例如：超商買咖啡">
-                <!-- 候選詞區塊 -->
-                <div id="memo-suggestions" style="display:none; flex-wrap:wrap; gap:8px; margin-top:10px;"></div>
+                <!-- 加入 list 屬性指向 datalist，並關閉預設 autocomplete 以防干擾 -->
+                <input type="text" id="modal-memo" class="form-control" list="memo-datalist" autocomplete="off" placeholder="例如：超商買咖啡">
+                <!-- 原生的資料清單，供手機鍵盤上方顯示用 -->
+                <datalist id="memo-datalist"></datalist>
             </div>
             <div class="modal-buttons">
                 <button class="btn-cancel-modal btn-3d" onclick="closeModal('action-modal')">取消</button>
@@ -659,9 +656,9 @@
             return appData.customOrder = appData.customOrder.filter(id => currentIds.has(id));
         }
 
-        // --- 智慧候選詞功能 ---
-        function renderSuggestions(type) {
-            const container = document.getElementById('memo-suggestions');
+        // --- 原生智慧候選詞功能 (利用 datalist) ---
+        function renderNativeSuggestions(type) {
+            const datalist = document.getElementById('memo-datalist');
             let suggestions = [];
             
             // 預設基本候選詞
@@ -679,20 +676,16 @@
                 });
                 const sortedMemos = Object.keys(memoCounts).sort((a, b) => memoCounts[b] - memoCounts[a]);
                 if (sortedMemos.length > 0) {
-                    // 將歷史高頻詞放在最前面，自動過濾重複，最多取 6 個顯示
-                    suggestions = [...new Set([...sortedMemos, ...suggestions])].slice(0, 6);
+                    // 將歷史高頻詞放在最前面，自動過濾重複，最多取 8 個交給系統鍵盤
+                    suggestions = [...new Set([...sortedMemos, ...suggestions])].slice(0, 8);
                 }
             }
             
-            if (suggestions.length > 0) {
-                container.innerHTML = suggestions.map(s => {
-                    const safeS = s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                    return `<span class="memo-chip" onclick="document.getElementById('modal-memo').value='${safeS}'">${s}</span>`;
-                }).join('');
-                container.style.display = 'flex';
-            } else {
-                container.style.display = 'none';
-            }
+            // 將候選詞塞入 datalist 供系統呼叫
+            datalist.innerHTML = suggestions.map(s => {
+                const safeS = s.replace(/"/g, '&quot;');
+                return `<option value="${safeS}">`;
+            }).join('');
         }
 
         // --- UI 控制 ---
@@ -899,7 +892,7 @@
                 document.getElementById('modal-title').innerText = '輸入扣款';
                 document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = '';
                 
-                renderSuggestions('扣款'); // 渲染候選詞
+                renderNativeSuggestions('扣款'); // 渲染原生 datalist 候選詞
                 
                 document.getElementById('action-modal').style.display = 'flex'; setTimeout(()=>document.getElementById('modal-amount').focus(), 100);
             }
@@ -912,7 +905,7 @@
             document.getElementById('modal-title').innerText = '輸入手動儲值';
             document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = '';
             
-            renderSuggestions('儲值'); // 渲染儲值專用候選詞
+            renderNativeSuggestions('儲值'); // 渲染原生 datalist 儲值專用候選詞
             
             document.getElementById('action-modal').style.display = 'flex'; setTimeout(()=>document.getElementById('modal-amount').focus(), 100);
         }
