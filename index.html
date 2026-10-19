@@ -150,6 +150,10 @@
         .modal h3 { margin-top: 0; font-size: 20px; color: var(--text-main); border-bottom: 2px solid var(--bg-color); padding-bottom: 12px; margin-bottom: 18px;}
         .modal-buttons { display: flex; gap: 12px; margin-top: 25px; flex-wrap: wrap; }
 
+        /* 候選詞樣式 */
+        .memo-chip { background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 12px; font-size: 13px; cursor: pointer; transition: all 0.2s; user-select: none; }
+        .memo-chip:active { background: var(--primary-light); border-color: var(--primary-color); color: var(--primary-dark); }
+
         /* History Items */
         .history-item { background: var(--card-bg); padding: 16px; border-radius: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0,0,0,0.03);}
         .history-left { display: flex; flex-direction: column; flex: 1; }
@@ -379,7 +383,12 @@
         <div class="modal">
             <h3 id="modal-title">輸入金額</h3>
             <div class="form-group"><label>金額</label><input type="number" id="modal-amount" class="form-control" placeholder="請輸入金額"></div>
-            <div class="form-group"><label>消費明細 (選填)</label><input type="text" id="modal-memo" class="form-control" placeholder="例如：超商買咖啡"></div>
+            <div class="form-group">
+                <label>消費明細 (選填)</label>
+                <input type="text" id="modal-memo" class="form-control" placeholder="例如：超商買咖啡">
+                <!-- 候選詞區塊 -->
+                <div id="memo-suggestions" style="display:none; flex-wrap:wrap; gap:8px; margin-top:10px;"></div>
+            </div>
             <div class="modal-buttons">
                 <button class="btn-cancel-modal btn-3d" onclick="closeModal('action-modal')">取消</button>
                 <button class="btn-block btn-primary btn-3d" style="margin-bottom:0; flex:1 1 40%;" onclick="submitAction()">確認執行</button>
@@ -529,6 +538,7 @@
         };
 
         const saveData = () => { localStorage.setItem(DB_KEY, JSON.stringify(appData)); updateHistorySelect(); renderHistory(); };
+        
         // === 雲端備份變數 ===
         const gasUrl = 'https://script.google.com/macros/s/AKfycbw0wAnCPZkw3nlyx0Eg08Ejk49oG_itD82PqH9IP4X7S4oR5br1NTCmlUJsNfME2kbZ/exec';
         let isCloudSyncing = ''; 
@@ -538,9 +548,9 @@
         const triggerAutoBackup = () => { 
             appData.lastBackupTime = new Date().toISOString(); 
             saveData(); 
-            // 防抖機制：延遲 1.5 秒執行，避免連續輸入時重複呼叫 API
+            // 防抖機制：延遲 3 秒執行，避免連續輸入時重複呼叫 API
             if (cloudBackupTimer) clearTimeout(cloudBackupTimer);
-            cloudBackupTimer = setTimeout(() => { cloudBackup(true); }, 1500);
+            cloudBackupTimer = setTimeout(() => { cloudBackup(true); }, 3000);
         };
 
         // === 2. 本機備份 (保留給手動點擊使用) ===
@@ -562,7 +572,7 @@
             try {
                 const payload = {
                     action: "auto_backup",
-                    fileName: "電子票證管家_雲端備份.json", // 專屬檔名
+                    fileName: "電子票證管家_雲端備份.json", 
                     backupData: appData
                 };
                 const response = await fetch(gasUrl, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
@@ -649,6 +659,42 @@
             return appData.customOrder = appData.customOrder.filter(id => currentIds.has(id));
         }
 
+        // --- 智慧候選詞功能 ---
+        function renderSuggestions(type) {
+            const container = document.getElementById('memo-suggestions');
+            let suggestions = [];
+            
+            // 預設基本候選詞
+            if (type === '扣款') {
+                suggestions = ['捷運', '公車', '台鐵', '超商', '飲料', '便當'];
+            } else if (type === '儲值') {
+                suggestions = ['現金儲值', '信用卡自動加值', '發票中獎', '零錢加值'];
+            }
+            
+            // 加入歷史高頻紀錄 (智慧推薦)
+            if (appData.transactions && appData.transactions.length > 0) {
+                const memoCounts = {};
+                appData.transactions.filter(t => t.type === type && t.memo).forEach(t => {
+                    memoCounts[t.memo] = (memoCounts[t.memo] || 0) + 1;
+                });
+                const sortedMemos = Object.keys(memoCounts).sort((a, b) => memoCounts[b] - memoCounts[a]);
+                if (sortedMemos.length > 0) {
+                    // 將歷史高頻詞放在最前面，自動過濾重複，最多取 6 個顯示
+                    suggestions = [...new Set([...sortedMemos, ...suggestions])].slice(0, 6);
+                }
+            }
+            
+            if (suggestions.length > 0) {
+                container.innerHTML = suggestions.map(s => {
+                    const safeS = s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    return `<span class="memo-chip" onclick="document.getElementById('modal-memo').value='${safeS}'">${s}</span>`;
+                }).join('');
+                container.style.display = 'flex';
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
         // --- UI 控制 ---
         function toggleJcbUI(prefix) {
             const isYoyo = document.getElementById(`${prefix}-type`).value === '悠遊卡';
@@ -675,7 +721,6 @@
             else { content.style.display = 'block'; icon.style.transform = 'rotate(0deg)'; }
         }
 
-        // 排序操作：儲存狀態重新渲染，但不觸發 triggerAutoBackup (下載 .json)
         function handleSortChange() {
             const sortType = document.getElementById('card-sort-select').value;
             appData.sortPreference = sortType;
@@ -695,7 +740,6 @@
 
         // --- 進階疊加排序邏輯 ---
         function initMultiSortOptions() {
-            // 加入細分的種類排序選項
             const options = `
                 <option value="none">(無)</option>
                 <option value="type-default">🏷️ 卡片種類 (預設: 悠/愛/一)</option>
@@ -713,7 +757,6 @@
 
         function openMultiSortModal() {
             const ms = appData.multiSort;
-            // 確保舊版資料相容
             let l1 = ms.l1 || 'none', l2 = ms.l2 || 'none', l3 = ms.l3 || 'none', l4 = ms.l4 || 'none';
             if(l1 === 'type') l1 = 'type-default'; if(l2 === 'type') l2 = 'type-default';
             if(l3 === 'type') l3 = 'type-default'; if(l4 === 'type') l4 = 'type-default';
@@ -737,17 +780,15 @@
                 l4: document.getElementById('ms-l4').value
             };
             appData.sortPreference = 'multi';
-            document.getElementById('card-sort-select').value = 'multi'; // 為了相容性，給 select 塞入隱藏值
+            document.getElementById('card-sort-select').value = 'multi'; 
             closeModal('multi-sort-modal');
-            saveData(); renderCards(); // 儲存偏好但不觸發下載
+            saveData(); renderCards();
         }
         
-        // 取得卡片種類權重輔助函式
         function getTypeWeight(cardType, sortStrategy) {
             if (sortStrategy === 'type-easy') return cardType === '悠遊卡' ? 1 : (cardType === '一卡通' ? 2 : 3);
             if (sortStrategy === 'type-ipass') return cardType === '一卡通' ? 1 : (cardType === '悠遊卡' ? 2 : 3);
             if (sortStrategy === 'type-icash') return cardType === '愛金卡' ? 1 : (cardType === '悠遊卡' ? 2 : 3);
-            // 預設：悠遊卡 -> 愛金卡 -> 一卡通
             return cardType === '悠遊卡' ? 1 : (cardType === '愛金卡' ? 2 : 3);
         }
 
@@ -857,6 +898,9 @@
             } else {
                 document.getElementById('modal-title').innerText = '輸入扣款';
                 document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = '';
+                
+                renderSuggestions('扣款'); // 渲染候選詞
+                
                 document.getElementById('action-modal').style.display = 'flex'; setTimeout(()=>document.getElementById('modal-amount').focus(), 100);
             }
         }
@@ -867,6 +911,9 @@
             closeModal('topup-option-modal');
             document.getElementById('modal-title').innerText = '輸入手動儲值';
             document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = '';
+            
+            renderSuggestions('儲值'); // 渲染儲值專用候選詞
+            
             document.getElementById('action-modal').style.display = 'flex'; setTimeout(()=>document.getElementById('modal-amount').focus(), 100);
         }
 
@@ -948,7 +995,6 @@
 
             let sortType = appData.sortPreference;
             
-            // 確保 select 顯示正確的值 (處理多重排序隱藏值)
             const sortSelect = document.getElementById('card-sort-select');
             let hasOption = Array.from(sortSelect.options).some(opt => opt.value === sortType);
             if (!hasOption && sortType === 'multi') {
@@ -956,7 +1002,6 @@
             }
             sortSelect.value = sortType;
             
-            // 控制多重排序按鈕外觀
             const multiBtn = document.getElementById('multi-sort-btn');
             if (sortType === 'multi') {
                 multiBtn.classList.add('btn-multi-active');
@@ -968,7 +1013,6 @@
             const balBtn = document.getElementById('balance-sort-btn');
             if (balBtn) { balBtn.style.display = sortType === 'balance' ? 'block' : 'none'; if (sortType === 'balance') balBtn.innerHTML = appData.balanceSortDir === 'asc' ? '⬆️ 低到高' : '⬇️ 高到低'; }
 
-            // 搜尋過濾
             const searchQ = document.getElementById('card-search').value.toLowerCase().trim();
             let filteredCards = appData.cards;
             if (searchQ) {
@@ -981,7 +1025,7 @@
             
             if (sortType === 'smart') sorted.sort((a,b) => { const rA = (a.type === '悠遊卡' && a.isJCB !== false) ? getSortRegs(a.id) : 999, rB = (b.type === '悠遊卡' && b.isJCB !== false) ? getSortRegs(b.id) : 999; return rA !== rB ? rA - rB : a.balance - b.balance; });
             else if (sortType === 'balance') { if (appData.balanceSortDir === 'desc') sorted.sort((a,b) => b.balance - a.balance); else sorted.sort((a,b) => a.balance - b.balance); }
-            else if (sortType === 'type') sorted.sort((a,b) => getTypeWeight(a.type, 'type-default') - getTypeWeight(b.type, 'type-default')); // 修改預設種類排序
+            else if (sortType === 'type') sorted.sort((a,b) => getTypeWeight(a.type, 'type-default') - getTypeWeight(b.type, 'type-default')); 
             else if (sortType === 'custom') { const o = getCustomOrder(); sorted.sort((a,b) => o.indexOf(a.id) - o.indexOf(b.id)); }
             else if (sortType === 'multi') {
                 const criteria = appData.multiSort;
@@ -1111,7 +1155,7 @@
                 html += `<div class="stats-month-group"><div class="stats-month-title"><span>📅 ${k}</span><span style="color:${typeColor};">${targetType} ${g.count} 次</span></div>
                     ${g.items.map(t => {
                         const c = appData.cards.find(c => c.id === t.cardId); const cardName = c ? c.name : '已刪除的卡片';
-                        return `<div class="stats-item"><div style="flex:1;"><div style="color:var(--text-main); font-weight:bold; font-size:15px;">${cardName}</div><div style="color:var(--text-muted); font-size:13px; margin-top:4px;">${formatDate(t.timestamp)} ${t.memo ? ` | 📝 ${t.memo}` : ''}</div></div><div style="color:${typeColor}; font-weight:bold; font-size:16px; font-family:'Orbitron', sans-serif;">${targetType === '儲值' ? `+$${t.amount.toLocaleString()}` : '✓ 完成'}</div></div>`;
+                        return `<div class="stats-item"><div style="flex:1;"><div style="color:var(--text-main); font-weight:bold; font-size:15px;">${cardName}</div><div style="color:var(--text-muted); font-size:13px; margin-top:4px;">${formatDate(t.timestamp)}${t.memo ? ` | 📝 ${t.memo}` : ''}</div></div><div style="color:${typeColor}; font-weight:bold; font-size:16px; font-family:'Orbitron', sans-serif;">${targetType === '儲值' ? `+$${t.amount.toLocaleString()}` : '✓ 完成'}</div></div>`;
                     }).join('')}</div>`;
             });
             cont.innerHTML = html;
@@ -1176,7 +1220,6 @@
             a.download = `卡片資訊匯出_${currentYear}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.txt`;
             document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
             
-            // 🎯 新增：跳出匯出完成提示
             showDialog('卡片純文字資訊已成功匯出！', '匯出完成');
         }
         
