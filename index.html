@@ -488,7 +488,9 @@
         const DB_KEY = 'TransitApp_Data';
         let appData = { cards: [], transactions: [], customOrder: [], isOverviewCollapsed: false, multiSort: {l1: 'type-default', l2: 'balance-desc', l3: 'none', l4: 'none'} };
         let deferredPrompt, currentAction = { cardId: null, type: null };
-        let allowAppExit = false; 
+        let allowAppExit = false;
+        // 記錄開始操作時卡片在畫面中的垂直位置，排序改變後仍停留在同一張卡片。
+        let cardViewportAnchor = null;
 
         // 安全的通用對話框 (取代 alert / confirm)
         let dialogCallback = null;
@@ -747,6 +749,33 @@
 
         function toggleStar(e, id) { e.stopPropagation(); const c = appData.cards.find(c => c.id === id); if (c) { c.isStarred = !c.isStarred; saveData(); renderCards(); triggerAutoBackup(); } }
         function scrollToCard(id) { const el = document.getElementById('card-view-' + id); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.boxShadow = '0 0 0 3px var(--primary-color)'; setTimeout(() => el.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.06)', 1500); } }
+
+        // 開啟扣款／儲值／登錄操作時，先記住該卡片目前在視窗中的位置。
+        function captureCardViewport(id) {
+            const card = document.getElementById('card-view-' + id);
+            cardViewportAnchor = card ? { id: String(id), top: card.getBoundingClientRect().top } : null;
+        }
+
+        // 新增明細導致排序改變時，將同一張卡片放回原本的畫面位置。
+        function restoreCardViewport(id) {
+            const anchor = cardViewportAnchor;
+            if (!anchor || anchor.id !== String(id)) return;
+            cardViewportAnchor = null;
+
+            requestAnimationFrame(() => {
+                const card = document.getElementById('card-view-' + id);
+                if (!card) return;
+                const currentTop = card.getBoundingClientRect().top;
+                const delta = currentTop - anchor.top;
+                if (Math.abs(delta) > 1) window.scrollBy({ top: delta, left: 0, behavior: 'auto' });
+
+                // 短暫描邊提示目前仍停留在剛剛操作的卡片。
+                card.style.boxShadow = '0 0 0 3px var(--primary-color), 0 4px 15px rgba(0, 0, 0, 0.06)';
+                setTimeout(() => {
+                    if (document.contains(card)) card.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.06)';
+                }, 1200);
+            });
+        }
         
         function switchTab(id, btn, preventScroll = false) { 
             document.querySelectorAll('.tab-content, .nav-btn').forEach(el => el.classList.remove('active-tab', 'active')); 
@@ -946,6 +975,7 @@
 
         function openActionModal(id, type) {
             currentAction = { cardId: id, type };
+            captureCardViewport(id);
             if (type === '登錄') {
                 const c = appData.cards.find(card => card.id === id);
                 const effectiveInitRegs = (c.initRegsYear === new Date().getFullYear()) ? (c.initRegs || 0) : 0;
@@ -988,11 +1018,13 @@
 
         function executeAction(id, type, amount, memo) {
             const c = appData.cards.find(c => c.id === id); if (!c) return;
+            // 若此操作不是由卡片按鈕直接開啟，也確保能記錄操作前的位置。
+            if (!cardViewportAnchor || cardViewportAnchor.id !== String(id)) captureCardViewport(id);
             if (type === '扣款') {
                 if (c.balance < amount) { const topupAmt = Math.ceil((amount - c.balance) / 500) * 500; c.balance += topupAmt; addTx(id, '儲值', topupAmt, '餘額不足自動儲值', '_topup', -1); }
                 c.balance -= amount;
             } else if (type === '儲值') { c.balance += amount; }
-            addTx(id, type, amount, memo); saveData(); renderCards(); triggerAutoBackup();
+            addTx(id, type, amount, memo); saveData(); renderCards(); restoreCardViewport(id); triggerAutoBackup();
         }
 
         function openEditModal(id) {
