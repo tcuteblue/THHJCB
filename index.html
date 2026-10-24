@@ -427,7 +427,23 @@
     <div class="modal-overlay" id="action-modal">
         <div class="modal">
             <h3 id="modal-title">輸入金額</h3>
-            <div class="form-group"><label>金額</label><input type="number" id="modal-amount" class="form-control" placeholder="請輸入金額"></div>
+            <div class="form-group"><label>金額</label><input type="text" inputmode="decimal" id="modal-amount" class="form-control" placeholder="請輸入金額" autocomplete="off" onfocus="showAmountCalculator()" oninput="syncCalculatorFromAmount()">
+                <div id="amount-calculator" style="display:none; margin-top:10px; padding:12px; background:var(--bg-color); border:1px solid var(--border-color); border-radius:12px;">
+                    <div id="calculator-expression" style="min-height:20px; color:var(--text-muted); text-align:right; font-size:13px; overflow-wrap:anywhere;"></div>
+                    <div id="calculator-display" aria-live="polite" style="min-height:38px; padding:4px 2px 10px; text-align:right; font-size:26px; font-weight:bold; color:var(--text-main); overflow-wrap:anywhere;">0</div>
+                    <div class="calculator-grid" style="display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px;">
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorClear()" style="background:#fee2e2;color:#b91c1c;">AC</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorBackspace()">⌫</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorInput('÷')">÷</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorInput('×')">×</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorInput('7')">7</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('8')">8</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('9')">9</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('−')">−</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorInput('4')">4</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('5')">5</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('6')">6</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('+')">+</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorInput('1')">1</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('2')">2</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('3')">3</button><button type="button" class="btn-sm btn-3d" onclick="calculatorEvaluate()" style="grid-row:span 2;background:var(--primary-color);color:white;">=</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorInput('0')">0</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('00')">00</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('.')">.</button>
+                    </div>
+                    <button type="button" class="btn-block btn-primary btn-3d" onclick="applyCalculatorResult()" style="margin-top:9px;margin-bottom:0;">使用此金額</button>
+                </div>
+            </div>
             <div class="form-group">
                 <label>消費明細 (選填)</label>
                 <!-- 加入 list 屬性指向 datalist，並關閉預設 autocomplete 以防干擾 -->
@@ -989,6 +1005,67 @@
             });
         }
 
+        // 金額計算機：輸入欄位下方展開，支援四則運算、歸零與倒退鍵。
+        let calculatorExpression = '';
+        let calculatorJustEvaluated = false;
+        function showAmountCalculator() {
+            const box = document.getElementById('amount-calculator');
+            if (box) box.style.display = 'block';
+            if (!calculatorExpression) syncCalculatorFromAmount();
+        }
+        function syncCalculatorFromAmount() {
+            const input = document.getElementById('modal-amount');
+            if (!input || calculatorJustEvaluated) return;
+            calculatorExpression = String(input.value || '').replace(/\*/g, '×').replace(/\//g, '÷').replace(/-/g, '−');
+            updateCalculatorDisplay();
+        }
+        function updateCalculatorDisplay() {
+            const exp = document.getElementById('calculator-expression');
+            const disp = document.getElementById('calculator-display');
+            if (exp) exp.textContent = calculatorExpression;
+            if (disp) {
+                let value = calculatorExpression || '0';
+                try { if (/[+×÷−]$/.test(value)) value = value.slice(0,-1) || '0';
+                    if (value && !/[+×÷−]/.test(value)) value = String(Number(value));
+                } catch(e) {}
+                disp.textContent = value;
+            }
+        }
+        function calculatorInput(key) {
+            if (calculatorJustEvaluated && /[0-9.]/.test(key)) calculatorExpression = '';
+            calculatorJustEvaluated = false;
+            if (key === '.' && /(?:^|[+×÷−])[^+×÷−]*\./.test(calculatorExpression)) return;
+            if (/[+×÷−]/.test(key) && /[+×÷−]$/.test(calculatorExpression)) calculatorExpression = calculatorExpression.slice(0,-1);
+            calculatorExpression += key;
+            updateCalculatorDisplay();
+        }
+        function calculatorClear() { calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay(); }
+        function calculatorBackspace() { calculatorExpression = calculatorExpression.slice(0,-1); calculatorJustEvaluated = false; updateCalculatorDisplay(); }
+        function evaluateArithmeticExpression(expr) {
+            const normalized = expr.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/\s/g,'');
+            if (!normalized || !/^[0-9.+*/-]+$/.test(normalized)) throw new Error('算式不完整');
+            const tokens = normalized.match(/(?:\d+\.?\d*|\.\d+)|[+*/-]/g);
+            if (!tokens || tokens.join('') !== normalized) throw new Error('算式格式錯誤');
+            const values = [], ops = [];
+            const precedence = op => (op === '*' || op === '/') ? 2 : 1;
+            const apply = () => { const op=ops.pop(), b=values.pop(), a=values.pop(); if(a===undefined||b===undefined) throw new Error('算式不完整'); if(op==='+') values.push(a+b); else if(op==='-') values.push(a-b); else if(op==='*') values.push(a*b); else { if(b===0) throw new Error('不能除以 0'); values.push(a/b); } };
+            let expectNumber = true;
+            for (let i=0;i<tokens.length;i++) { const t=tokens[i];
+                if (/^(?:\d+\.?\d*|\.\d+)$/.test(t)) { if(!expectNumber) throw new Error('算式格式錯誤'); values.push(Number(t)); expectNumber=false; }
+                else { if(expectNumber && t==='-' && i===0) { tokens.splice(i,1,'0','-'); i--; continue; } if(expectNumber) throw new Error('算式格式錯誤'); while(ops.length && precedence(ops[ops.length-1])>=precedence(t)) apply(); ops.push(t); expectNumber=true; }
+            }
+            if(expectNumber) throw new Error('算式不完整'); while(ops.length) apply(); if(values.length!==1 || !Number.isFinite(values[0])) throw new Error('計算結果無效'); return Math.round((values[0]+Number.EPSILON)*100)/100;
+        }
+        function calculatorEvaluate() {
+            try { const result=evaluateArithmeticExpression(calculatorExpression); calculatorExpression=String(result); calculatorJustEvaluated=true; updateCalculatorDisplay(); }
+            catch(e) { showDialog('無法計算：'+e.message, '計算機'); }
+        }
+        function applyCalculatorResult() {
+            try { const result=evaluateArithmeticExpression(calculatorExpression); if(result<=0) return showDialog('金額必須大於 0');
+                const input=document.getElementById('modal-amount'); input.value=String(result); calculatorExpression=String(result); calculatorJustEvaluated=true; updateCalculatorDisplay(); input.focus();
+            } catch(e) { showDialog('無法使用此金額：'+e.message, '計算機'); }
+        }
+
         function openActionModal(id, type) {
             currentAction = { cardId: id, type };
             captureCardViewport(id);
@@ -1005,7 +1082,7 @@
                 document.getElementById('topup-option-modal').style.display = 'flex';
             } else {
                 document.getElementById('modal-title').innerText = '輸入扣款';
-                document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = '';
+                document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = ''; calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay();
                 
                 renderNativeSuggestions('扣款'); // 渲染原生 datalist 候選詞
                 
@@ -1018,7 +1095,7 @@
         function openCustomTopup() {
             closeModal('topup-option-modal');
             document.getElementById('modal-title').innerText = '輸入手動儲值';
-            document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = '';
+            document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = ''; calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay();
             
             renderNativeSuggestions('儲值'); // 渲染原生 datalist 儲值專用候選詞
             
@@ -1036,11 +1113,13 @@
             const c = appData.cards.find(c => c.id === id); if (!c) return;
             // 若此操作不是由卡片按鈕直接開啟，也確保能記錄操作前的位置。
             if (!cardViewportAnchor || cardViewportAnchor.id !== String(id)) captureCardViewport(id);
+            let autoTopupAmount = 0;
             if (type === '扣款') {
-                if (c.balance < amount) { const topupAmt = Math.ceil((amount - c.balance) / 500) * 500; c.balance += topupAmt; addTx(id, '儲值', topupAmt, '餘額不足自動儲值', '_topup', -1); }
+                if (c.balance < amount) { autoTopupAmount = Math.ceil((amount - c.balance) / 500) * 500; c.balance += autoTopupAmount; addTx(id, '儲值', autoTopupAmount, '餘額不足自動儲值', '_topup', -1); }
                 c.balance -= amount;
             } else if (type === '儲值') { c.balance += amount; }
             addTx(id, type, amount, memo); saveData(); renderCards(); restoreCardViewport(id); triggerAutoBackup();
+            if (autoTopupAmount > 0) setTimeout(() => showDialog(`本次扣款已完成，因餘額不足，自動儲值 ${autoTopupAmount.toLocaleString()} 元。`, '自動儲值通知'), 180);
         }
 
         function openEditModal(id) {
