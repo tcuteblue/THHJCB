@@ -1086,7 +1086,7 @@
                 
                 renderNativeSuggestions('扣款'); // 渲染原生 datalist 候選詞
                 
-                document.getElementById('action-modal').style.display = 'flex'; setTimeout(()=>document.getElementById('modal-amount').focus(), 100);
+                document.getElementById('action-modal').style.display = 'flex';
             }
         }
 
@@ -1099,7 +1099,7 @@
             
             renderNativeSuggestions('儲值'); // 渲染原生 datalist 儲值專用候選詞
             
-            document.getElementById('action-modal').style.display = 'flex'; setTimeout(()=>document.getElementById('modal-amount').focus(), 100);
+            document.getElementById('action-modal').style.display = 'flex';
         }
 
         function submitAction() {
@@ -1115,11 +1115,21 @@
             if (!cardViewportAnchor || cardViewportAnchor.id !== String(id)) captureCardViewport(id);
             let autoTopupAmount = 0;
             if (type === '扣款') {
-                if (c.balance < amount) { autoTopupAmount = Math.ceil((amount - c.balance) / 500) * 500; c.balance += autoTopupAmount; addTx(id, '儲值', autoTopupAmount, '餘額不足自動儲值', '_topup', -1); }
+                // 先完成扣款；只有扣款後餘額「小於 0」才自動儲值。
+                // 自動儲值以 NT$500 為單位，以負數餘額的絕對值向上取整至 NT$500 的倍數；餘額剛好 0 元不儲值。
                 c.balance -= amount;
-            } else if (type === '儲值') { c.balance += amount; }
-            addTx(id, type, amount, memo); saveData(); renderCards(); restoreCardViewport(id); triggerAutoBackup();
-            if (autoTopupAmount > 0) setTimeout(() => showDialog(`本次扣款已完成，因餘額不足，自動儲值 ${autoTopupAmount.toLocaleString()} 元。`, '自動儲值通知'), 180);
+                addTx(id, type, amount, memo);
+                if (c.balance < 0) {
+                    autoTopupAmount = Math.ceil(Math.abs(c.balance) / 500) * 500;
+                    c.balance += autoTopupAmount;
+                    addTx(id, '儲值', autoTopupAmount, '負數餘額自動儲值（每次 NT$500 或其倍數）', '_topup', -1);
+                }
+            } else {
+                if (type === '儲值') c.balance += amount;
+                addTx(id, type, amount, memo);
+            }
+            saveData(); renderCards(); restoreCardViewport(id); triggerAutoBackup();
+            if (autoTopupAmount > 0) setTimeout(() => showDialog(`本次扣款已完成，扣款後餘額為負數，已自動儲值 ${autoTopupAmount.toLocaleString()} 元，讓餘額回到正數。`, '自動儲值通知'), 180);
         }
 
         function openEditModal(id) {
