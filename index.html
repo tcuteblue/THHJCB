@@ -1149,12 +1149,22 @@
             catch(e) { showDialog('無法計算：'+e.message, '計算機'); }
         }
         function applyCalculatorResult() {
-            try { const result=evaluateArithmeticExpression(calculatorExpression); if(result<0) return showDialog('金額不可小於 0');
-                const input=document.getElementById('modal-amount'); input.value=String(result); calculatorExpression=String(result); calculatorJustEvaluated=true; updateCalculatorDisplay();
-                // 套用金額後收起計算機；若金額為 0 也可套用並關閉計算機。
-                const box=document.getElementById('amount-calculator'); if(box) box.style.display='none';
-                if(input) input.blur();
-            } catch(e) { showDialog('無法使用此金額：'+e.message, '計算機'); }
+            try {
+                // 未輸入任何數字或算式時，直接把預設值 0 套用，不要求使用者先輸入算式。
+                const result = calculatorExpression.trim() === '' ? 0 : evaluateArithmeticExpression(calculatorExpression);
+                if (result < 0) return showDialog('金額不可小於 0');
+                const input = document.getElementById('modal-amount');
+                if (input) input.value = String(result);
+                calculatorExpression = String(result);
+                calculatorJustEvaluated = true;
+                updateCalculatorDisplay();
+                // 套用金額後收起計算機；空白時也可直接套用 0。
+                const box = document.getElementById('amount-calculator');
+                if (box) box.style.display = 'none';
+                if (input) input.blur();
+            } catch (e) {
+                showDialog('無法使用此金額：' + e.message, '計算機');
+            }
         }
 
         function openActionModal(id, type) {
