@@ -248,6 +248,87 @@
         .btn-l-bak { background: linear-gradient(135deg, #607D8B, #455A64); color: white; box-shadow: 0 4px 0 #37474f; }
         .btn-l-res { background: linear-gradient(135deg, #a2d9ce, #73c6b6); color: #0b5345; box-shadow: 0 4px 0 #76d7c4; }
     </style>
+
+<style id="amount-calculator-contrast-fix">
+/* 高對比金額計算機：避免沿用全站按鈕配色造成文字看不清 */
+#amount-calculator {
+  background: #f1f5f9 !important;
+  border: 2px solid #64748b !important;
+  color: #111827 !important;
+  box-shadow: 0 4px 14px rgba(15,23,42,.12) !important;
+}
+#amount-calculator #calculator-expression {
+  color: #334155 !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  min-height: 24px !important;
+}
+#amount-calculator #calculator-display {
+  color: #111827 !important;
+  background: #ffffff !important;
+  border: 1px solid #94a3b8 !important;
+  border-radius: 8px !important;
+  padding: 9px 10px !important;
+  margin: 4px 0 12px !important;
+  min-height: 48px !important;
+  font-size: 32px !important;
+  font-weight: 800 !important;
+  line-height: 1.35 !important;
+}
+#amount-calculator .calculator-grid button {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 2px solid #64748b !important;
+  border-radius: 10px !important;
+  min-height: 50px !important;
+  padding: 8px 4px !important;
+  font-size: 22px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  text-shadow: none !important;
+  box-shadow: 0 2px 0 #cbd5e1 !important;
+  opacity: 1 !important;
+}
+#amount-calculator .calculator-grid button:first-child {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border-color: #dc2626 !important;
+}
+#amount-calculator .calculator-grid button:nth-child(3),
+#amount-calculator .calculator-grid button:nth-child(4),
+#amount-calculator .calculator-grid button:nth-child(8),
+#amount-calculator .calculator-grid button:nth-child(12) {
+  background: #dbeafe !important;
+  color: #1e3a8a !important;
+  border-color: #2563eb !important;
+}
+#amount-calculator .calculator-grid button:nth-child(16) {
+  background: #166534 !important;
+  color: #ffffff !important;
+  border-color: #14532d !important;
+}
+#amount-calculator .calculator-grid button:active {
+  transform: translateY(1px) !important;
+  box-shadow: none !important;
+}
+#amount-calculator > button {
+  background: #1d4ed8 !important;
+  color: #ffffff !important;
+  border: 2px solid #1e40af !important;
+  border-radius: 10px !important;
+  min-height: 50px !important;
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+@media (max-width: 480px) {
+  #amount-calculator .calculator-grid { gap: 8px !important; }
+  #amount-calculator .calculator-grid button { min-height: 52px !important; font-size: 23px !important; }
+  #amount-calculator #calculator-display { font-size: 30px !important; }
+}
+</style>
+
 </head>
 <body>
     <div class="header" role="button" tabindex="0" title="點擊回到頂部" aria-label="點擊回到頂部" onclick="scrollToTop()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToTop();}">電子票證管家</div>
