@@ -902,7 +902,14 @@
             btn.tabIndex = shouldShow ? 0 : -1;
         }
         
-        function closeModal(id) { const el = document.getElementById(id); if(el) el.style.display = 'none'; }
+        function closeModal(id) {
+            const el = document.getElementById(id); if(el) el.style.display = 'none';
+            // 關閉扣款/儲值輸入視窗時，清除計算機顯示狀態，避免下次操作其他卡片時殘留。
+            if (id === 'action-modal') {
+                const calc = document.getElementById('amount-calculator'); if (calc) calc.style.display = 'none';
+                calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay();
+            }
+        }
         
         function toggleOverview() {
             appData.isOverviewCollapsed = !appData.isOverviewCollapsed; saveData(); // 介面狀態不觸發備份下載
@@ -1142,8 +1149,11 @@
             catch(e) { showDialog('無法計算：'+e.message, '計算機'); }
         }
         function applyCalculatorResult() {
-            try { const result=evaluateArithmeticExpression(calculatorExpression); if(result<=0) return showDialog('金額必須大於 0');
-                const input=document.getElementById('modal-amount'); input.value=String(result); calculatorExpression=String(result); calculatorJustEvaluated=true; updateCalculatorDisplay(); input.focus();
+            try { const result=evaluateArithmeticExpression(calculatorExpression); if(result<0) return showDialog('金額不可小於 0');
+                const input=document.getElementById('modal-amount'); input.value=String(result); calculatorExpression=String(result); calculatorJustEvaluated=true; updateCalculatorDisplay();
+                // 套用金額後收起計算機；若金額為 0 也可套用並關閉計算機。
+                const box=document.getElementById('amount-calculator'); if(box) box.style.display='none';
+                if(input) input.blur();
             } catch(e) { showDialog('無法使用此金額：'+e.message, '計算機'); }
         }
 
@@ -1163,6 +1173,7 @@
                 document.getElementById('topup-option-modal').style.display = 'flex';
             } else {
                 document.getElementById('modal-title').innerText = '輸入扣款';
+                document.getElementById('amount-calculator').style.display = 'none';
                 document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = ''; calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay();
                 
                 renderNativeSuggestions('扣款'); // 渲染原生 datalist 候選詞
@@ -1176,6 +1187,7 @@
         function openCustomTopup() {
             closeModal('topup-option-modal');
             document.getElementById('modal-title').innerText = '輸入手動儲值';
+            document.getElementById('amount-calculator').style.display = 'none';
             document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = ''; calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay();
             
             renderNativeSuggestions('儲值'); // 渲染原生 datalist 儲值專用候選詞
