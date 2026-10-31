@@ -131,6 +131,11 @@
         .btn-green { background-color: var(--success-color); color: #fff; box-shadow: 0 4px 0 #059669; }
         .btn-cancel-modal { background-color: #f1f5f9; color: var(--text-muted); box-shadow: 0 4px 0 #cbd5e1; flex:1 1 40%; padding:14px; border-radius:12px; cursor:pointer; font-size: 16px; font-weight: bold; border: none;}
         .btn-danger-alt { background-color: #fee2e2; color: var(--danger-color); box-shadow: 0 4px 0 #fca5a5; font-weight: bold; margin-top: 10px; }
+        .ledger-card-choice { width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px; border:1px solid var(--border-color); border-radius:12px; background:#fff; color:var(--text-main); text-align:left; cursor:pointer; }
+        .ledger-card-choice:active { background:var(--primary-light); border-color:var(--primary-color); }
+        .ledger-card-choice-name { font-size:16px; font-weight:700; }
+        .ledger-card-choice-meta { margin-top:4px; color:var(--text-muted); font-size:12px; }
+        .ledger-card-choice-balance { flex:0 0 auto; font-family:'Orbitron',sans-serif; font-size:18px; font-weight:700; }
 
         .btn-sm { padding: 10px 4px; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; flex: 1; color: white; letter-spacing: 1px; } 
         .btn-sm-deduct { background-color: var(--danger-color); box-shadow: 0 4px 0 var(--danger-dark); }
@@ -508,6 +513,7 @@
     <div class="modal-overlay" id="action-modal">
         <div class="modal">
             <h3 id="modal-title">輸入金額</h3>
+            <p id="external-deduction-context" style="display:none; margin:-8px 0 16px; padding:9px 11px; border-radius:9px; background:var(--primary-light); color:var(--primary-dark); font-size:14px; line-height:1.5;"></p>
             <div class="form-group"><label>金額</label><input type="text" id="modal-amount" class="form-control" placeholder="點擊此欄位開啟計算機" autocomplete="off" inputmode="none" readonly aria-haspopup="true" aria-controls="amount-calculator" onclick="showAmountCalculator()">
                 <div id="amount-calculator" style="display:none; margin-top:10px; padding:12px; background:var(--bg-color); border:1px solid var(--border-color); border-radius:12px;">
                     <div id="calculator-expression" style="min-height:20px; color:var(--text-muted); text-align:right; font-size:13px; overflow-wrap:anywhere;"></div>
@@ -533,8 +539,20 @@
                 <datalist id="memo-datalist"></datalist>
             </div>
             <div class="modal-buttons" id="action-modal-buttons">
-                <button class="btn-cancel-modal btn-3d" onclick="closeModal('action-modal')">取消</button>
+                <button class="btn-cancel-modal btn-3d" onclick="cancelActionModal()">取消</button>
                 <button class="btn-block btn-primary btn-3d" style="margin-bottom:0; flex:1 1 40%;" onclick="submitAction()">確認執行</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 接收個人雲帳本的支出：先選卡，再確認扣款 -->
+    <div class="modal-overlay" id="ledger-deduction-card-modal" style="z-index:90;">
+        <div class="modal">
+            <h3 style="color:var(--primary-color);">個人雲帳本｜選擇扣款卡片</h3>
+            <p id="ledger-deduction-summary" style="font-size:15px; line-height:1.6; color:var(--text-muted); margin:0 0 15px;"></p>
+            <div id="ledger-deduction-card-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+            <div class="modal-buttons" style="margin-top:18px;">
+                <button class="btn-cancel-modal btn-3d" style="width:100%; flex:1 1 100%;" onclick="cancelExternalLedgerDeduction()">取消扣款</button>
             </div>
         </div>
     </div>
@@ -584,8 +602,12 @@
     <script>
         // --- 核心變數與初始化 ---
         const DB_KEY = 'TransitApp_Data';
+        const LEDGER_REQUEST_PREFIX = 'tcuteblue:ledger-transit:request:';
+        const LEDGER_GAS_URL = 'https://script.google.com/macros/s/AKfycbz9Tohi--mDE6Pk5u6P20xBiHsQ-yMR1rDmfG5Q7LBmxaOeLxedtHp0iMwh4AuCyt4Ncw/exec';
         let appData = { cards: [], transactions: [], customOrder: [], isOverviewCollapsed: false, starBaseSortPreference: 'default', multiSort: {l1: 'type-default', l2: 'balance-desc', l3: 'none', l4: 'none'} };
         let deferredPrompt, currentAction = { cardId: null, type: null };
+        let externalLedgerRequest = null;
+        let externalDeductionProcessing = false;
         let allowAppExit = false;
         // 記錄開始操作時卡片在畫面中的垂直位置，排序改變後仍停留在同一張卡片。
         let cardViewportAnchor = null;
@@ -615,7 +637,7 @@
         function isIOS() { return (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && !window.MSStream; }
         function isPWA() { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; }
 
-        function init() {
+        async function init() {
             setupPWA();
             window.addEventListener('scroll', updateBackToTopButton, { passive: true });
             updateBackToTopButton();
@@ -631,9 +653,13 @@
             toggleJcbUI('new-card');
             updateHistorySelect();
             initMultiSortOptions();
+            // 先立即顯示本機資料；接著比對雲端，若另一個獨立 PWA 有較新備份再更新畫面。
             renderCards();
             renderHistory();
-            
+            await syncTransitDataFromCloudOnStartup();
+            renderCards();
+            renderHistory();
+
             const installBtn = document.getElementById('install-app-btn');
             if (isPWA()) { installBtn.style.display = 'none'; } else {
                 if (isIOS()) { installBtn.style.display = 'block'; installBtn.onclick = () => { document.getElementById('ios-install-modal').style.display = 'flex'; }; } 
@@ -642,6 +668,8 @@
             window.addEventListener('appinstalled', () => { deferredPrompt = null; installBtn.style.display = 'none'; });
 
             checkRemindersOnStartup();
+            // 等卡片清單與首頁完成初始化後，再處理由個人雲帳本傳入的扣款請求。
+            setTimeout(handleExternalLedgerRequestFromUrl, 350);
         }
 
         window.addEventListener('popstate', function(e) {
@@ -718,22 +746,28 @@
                 if (btn) { btn.disabled = true; btn.innerHTML = '⏳ 備份中...'; }
             }
             try {
+                // 備份時間必須先寫入「本次要上傳的快照」，否則另一個獨立 PWA
+                // 讀到雲端資料時，無法正確比較哪一份資料較新。
+                const backupTime = new Date().toISOString();
+                const backupSnapshot = { ...appData, lastBackupTime: backupTime };
                 const payload = {
                     action: "auto_backup",
                     fileName: "電子票證管家_雲端備份.json", 
-                    backupData: appData
+                    backupData: backupSnapshot
                 };
                 const response = await fetch(gasUrl, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
                 const result = await response.json();
                 
                 if (result.status === 'success') {
-                    appData.lastBackupTime = new Date().toISOString(); saveData(); renderCards();
+                    appData.lastBackupTime = backupTime; saveData(); renderCards();
                     if (!isAuto) showDialog("✅ 雲端備份成功！\n資料已安全存入 Google Drive。", "備份成功");
+                    return true;
                 } else {
                     throw new Error(result.message);
                 }
             } catch (e) {
                 if (!isAuto) showDialog("❌ 雲端備份失敗：" + e.message, "錯誤");
+                return false;
             } finally {
                 if (!isAuto) {
                     isCloudSyncing = '';
@@ -780,6 +814,47 @@
         }
         
 
+        // 若 iOS 的不同獨立 PWA／Safari 環境各有自己的 localStorage，
+        // 啟動時用電子票證管家既有的雲端備份比對 lastBackupTime，取較新的完整資料。
+        async function syncTransitDataFromCloudOnStartup() {
+            const localHasData = !!(localStorage.getItem(DB_KEY) && (appData.cards.length || appData.transactions.length));
+            const localTime = Date.parse(appData.lastBackupTime || '') || 0;
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'restore_from_cloud', fileName: '電子票證管家_雲端備份.json' }),
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const result = await response.json();
+                if (!result || result.status !== 'success' || !result.data) return false;
+                const cloudData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
+                if (!cloudData || !Array.isArray(cloudData.cards) || !Array.isArray(cloudData.transactions)) return false;
+                const cloudTime = Date.parse(cloudData.lastBackupTime || '') || 0;
+
+                if (!localHasData || cloudTime > localTime) {
+                    appData = { ...appData, ...cloudData };
+                    saveData();
+                    return true;
+                }
+                if (localTime > cloudTime) {
+                    // 本機備份時間較新，代表可能有尚未上傳的變更；嘗試補推本機完整資料。
+                    await cloudBackup(true);
+                }
+                return false;
+            } catch (e) {
+                // 雲端暫時不可用時保留本機資料，不阻擋正常開啟。
+                console.warn('電子票證雲端資料比對未完成：', e);
+                return false;
+            }
+        }
+
+        async function flushTransitCloudBackupNow() {
+            if (cloudBackupTimer) clearTimeout(cloudBackupTimer);
+            cloudBackupTimer = null;
+            return await cloudBackup(true);
+        }
+
         // --- 工具函式 ---
         const pad = n => n.toString().padStart(2, '0');
         const formatDate = (dateObj, inputFormat = false) => {
@@ -796,8 +871,12 @@
             }).length;
         };
 
-        const addTx = (cardId, type, amount, memo, idSuffix = '', timeOffset = 0) => {
-            appData.transactions.push({ id: Date.now() + idSuffix, cardId, timestamp: new Date(Date.now() + timeOffset).toISOString(), type, amount, memo });
+        const addTx = (cardId, type, amount, memo, idSuffix = '', timeOffset = 0, timestampOverride = null, extraFields = {}) => {
+            const baseMs = timestampOverride ? new Date(timestampOverride).getTime() : Date.now();
+            const safeBaseMs = Number.isFinite(baseMs) ? baseMs : Date.now();
+            const tx = { id: Date.now() + idSuffix, cardId, timestamp: new Date(safeBaseMs + timeOffset).toISOString(), type, amount, memo, ...extraFields };
+            appData.transactions.push(tx);
+            return tx;
         };
 
         function getCustomOrder() {
@@ -904,10 +983,21 @@
         
         function closeModal(id) {
             const el = document.getElementById(id); if(el) el.style.display = 'none';
+            const returnToCardPicker = id === 'action-modal' && !!externalLedgerRequest && !externalDeductionProcessing;
+            // 從扣款確認視窗按取消／手機返回鍵時，回到選卡畫面；真正取消由選卡畫面的「取消扣款」負責。
+            if (id === 'ledger-deduction-card-modal' && externalLedgerRequest && !externalDeductionProcessing) {
+                // 系統返回鍵關閉選卡視窗時保留 pending 請求；重新開啟帶 requestId 的網址仍可繼續處理。
+            }
             // 關閉扣款/儲值輸入視窗時，清除計算機顯示狀態，避免下次操作其他卡片時殘留。
             if (id === 'action-modal') {
                 setActionModalCalculatorMode(false);
                 calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay();
+                const context = document.getElementById('external-deduction-context');
+                if (context) context.style.display = 'none';
+            }
+            if (returnToCardPicker) {
+                renderExternalLedgerCardChoices();
+                document.getElementById('ledger-deduction-card-modal').style.display = 'flex';
             }
         }
         
@@ -1106,6 +1196,8 @@
             if (actionButtons) actionButtons.style.display = isOpen ? 'none' : '';
         }
         function showAmountCalculator() {
+            // 外部帳本交接的金額固定沿用帳本已儲存金額，避免票證扣款與帳本金額不一致。
+            if (externalLedgerRequest) return;
             setActionModalCalculatorMode(true);
             if (!calculatorExpression) syncCalculatorFromAmount();
         }
@@ -1174,6 +1266,283 @@
             }
         }
 
+        // ===== 個人雲帳本跨程式扣款交接 =====
+        function ledgerRequestStorageKey(requestId) {
+            return LEDGER_REQUEST_PREFIX + String(requestId || '');
+        }
+
+        function cacheLedgerRequest(request) {
+            if (!request || !request.requestId) return null;
+            try { localStorage.setItem(ledgerRequestStorageKey(request.requestId), JSON.stringify(request)); } catch (e) {}
+            return request;
+        }
+
+        async function callLedgerHandoffGas(payload) {
+            const response = await fetch(LEDGER_GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            if (!response.ok) throw new Error('個人雲帳本交接服務連線失敗（HTTP ' + response.status + '）');
+            const result = await response.json();
+            if (!result || result.status !== 'success') throw new Error((result && result.message) || '個人雲帳本交接服務回應異常');
+            return result;
+        }
+
+        async function fetchLedgerHandoff(requestId) {
+            const result = await callLedgerHandoffGas({ action: 'get_transit_handoff', requestId });
+            return result.data;
+        }
+
+        function cleanLedgerHandoffQuery() {
+            try {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('ledgerDeduction');
+                url.searchParams.delete('requestId');
+                history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+            } catch (e) {}
+        }
+
+        function makeTimestampForLedgerDate(dateString, timeZoneMode) {
+            const match = String(dateString || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!match) throw new Error('個人雲帳本傳入的日期格式不正確');
+            const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+            const check = new Date(Date.UTC(year, month - 1, day));
+            if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day) throw new Error('個人雲帳本傳入的日期無效');
+
+            const now = new Date();
+            let hour = now.getHours(), minute = now.getMinutes(), second = now.getSeconds(), millisecond = now.getMilliseconds();
+            if (timeZoneMode === 'tw') {
+                const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(now);
+                const part = type => Number((parts.find(p => p.type === type) || {}).value || 0);
+                hour = part('hour'); minute = part('minute'); second = part('second');
+                // 用台灣日期與台灣現在時刻組成 ISO；票證管家在台灣裝置上顯示時會是帳本指定日期。
+                return new Date(Date.UTC(year, month - 1, day, hour - 8, minute, second, millisecond)).toISOString();
+            }
+            return new Date(year, month - 1, day, hour, minute, second, millisecond).toISOString();
+        }
+
+        async function handleExternalLedgerRequestFromUrl() {
+            const url = new URL(window.location.href);
+            if (url.searchParams.get('ledgerDeduction') !== '1') return;
+            const requestId = url.searchParams.get('requestId');
+            if (!requestId) {
+                cleanLedgerHandoffQuery();
+                showDialog('沒有收到有效的帳本扣款識別碼，未執行扣款。', '帳本扣款資料錯誤');
+                return;
+            }
+
+            let request;
+            try {
+                // 從雲端讀取交接資料，不依賴兩個獨立 PWA 共用 localStorage。
+                request = await fetchLedgerHandoff(requestId);
+                cacheLedgerRequest(request);
+            } catch (e) {
+                cleanLedgerHandoffQuery();
+                showDialog('無法讀取個人雲帳本的扣款資料：' + e.message + '\n請確認網路連線及個人雲帳本 GAS 已部署新版。', '讀取扣款資料失敗');
+                return;
+            }
+            if (!request || request.source !== 'personal-cloud-ledger' || request.requestId !== requestId) {
+                cleanLedgerHandoffQuery();
+                showDialog('找不到個人雲帳本傳入的有效扣款資料，請回到帳本重新操作。', '找不到扣款資料');
+                return;
+            }
+
+            const existingTx = appData.transactions.find(t => String(t.externalRequestId || '') === requestId);
+            if (existingTx) {
+                // 本機已有同一請求的扣款紀錄；先確保票證資料也備份到雲端，再補寫交接完成狀態。
+                const existingCard = appData.cards.find(c => String(c.id) === String(existingTx.cardId)) || { id: existingTx.cardId, name: '' };
+                try {
+                    const backupOk = await flushTransitCloudBackupNow();
+                    if (!backupOk) throw new Error('電子票證雲端備份尚未成功');
+                    if (request.status === 'processing' && request.claimToken) {
+                        await callLedgerHandoffGas({
+                            action: 'complete_transit_handoff', requestId,
+                            claimToken: request.claimToken,
+                            transactionId: String(existingTx.id), cardId: existingCard.id,
+                            cardName: existingCard.name || '', completedAmount: Number(existingTx.amount), completedDate: request.date
+                        });
+                    }
+                } catch (e) {
+                    showDialog('這筆扣款已存在電子票證本機歷史紀錄，但雲端完成狀態尚未回報。請檢查歷史紀錄，不要再次扣款。', '請確認扣款紀錄');
+                    return;
+                }
+                cleanLedgerHandoffQuery();
+                showExternalLedgerResultDialog('這筆帳本扣款已經執行過。系統已找到原交易紀錄，為避免重複扣款，不會再次執行。', '避免重複扣款');
+                return;
+            }
+
+            if (request.status === 'processing') {
+                const processingAt = new Date(request.processingAt || 0).getTime();
+                const processingAge = Date.now() - processingAt;
+                if (Number.isFinite(processingAt) && processingAge >= 5 * 60 * 1000) {
+                    showDialog(
+                        '這筆扣款請求已處理中超過 5 分鐘，但目前這個電子票證資料庫找不到對應交易。\n\n請先到「歷史記錄」確認是否已經扣款。只有在確定沒有這筆扣款時，才按「確定」重新開放。',
+                        '確認是否重新開放扣款', true,
+                        async res => {
+                            if (!res) { cleanLedgerHandoffQuery(); return; }
+                            try {
+                                await callLedgerHandoffGas({ action: 'reset_stale_transit_handoff', requestId, confirmNoTransaction: true });
+                                setTimeout(handleExternalLedgerRequestFromUrl, 0);
+                            } catch (e) {
+                                showDialog('無法重新開放：' + e.message, '交接狀態未變更');
+                            }
+                        }
+                    );
+                } else {
+                    externalLedgerRequest = null;
+                    cleanLedgerHandoffQuery();
+                    showExternalLedgerResultDialog('這筆扣款請求正在另一個電子票證視窗處理中。為避免重複扣款，請先確認另一個視窗或電子票證歷史紀錄。', '扣款正在處理');
+                }
+                return;
+            }
+            if (request.status === 'completed') {
+                cleanLedgerHandoffQuery();
+                showExternalLedgerResultDialog(`這筆帳本扣款請求已經完成${request.cardName ? '（' + request.cardName + '）' : ''}。為避免重複扣款，系統不會再次執行。`, '已完成的扣款');
+                return;
+            }
+            if (request.status === 'cancelled') {
+                cleanLedgerHandoffQuery();
+                showDialog('這筆帳本扣款請求先前已取消，沒有執行扣款。', '扣款已取消');
+                return;
+            }
+            if (request.status !== 'pending') {
+                cleanLedgerHandoffQuery();
+                showDialog('這筆扣款請求目前不是可執行狀態，未執行扣款。', '扣款請求狀態異常');
+                return;
+            }
+            const amount = Number(request.amount);
+            if (!Number.isFinite(amount) || amount <= 0) {
+                cleanLedgerHandoffQuery();
+                showDialog('個人雲帳本傳入的金額無效，未執行扣款。', '扣款金額錯誤');
+                return;
+            }
+            try { makeTimestampForLedgerDate(request.date, request.timeZone); }
+            catch (e) { cleanLedgerHandoffQuery(); showDialog(e.message, '扣款日期錯誤'); return; }
+
+            externalLedgerRequest = request;
+            renderExternalLedgerCardChoices();
+            document.getElementById('ledger-deduction-card-modal').style.display = 'flex';
+        }
+
+        function renderExternalLedgerCardChoices() {
+            const list = document.getElementById('ledger-deduction-card-list');
+            const summary = document.getElementById('ledger-deduction-summary');
+            if (!list || !externalLedgerRequest) return;
+            const amount = Number(externalLedgerRequest.amount);
+            summary.textContent = `帳目日期：${externalLedgerRequest.date}　｜　金額：NT$ ${amount.toLocaleString()}${externalLedgerRequest.memo ? `
+消費明細：${externalLedgerRequest.memo}` : ''}`;
+            list.replaceChildren();
+            if (!appData.cards.length) {
+                const empty = document.createElement('p');
+                empty.textContent = '目前沒有可扣款的電子票證，請先新增卡片，或取消這次扣款。';
+                empty.style.cssText = 'font-size:14px;color:var(--text-muted);text-align:center;padding:15px 5px;line-height:1.6;';
+                list.appendChild(empty);
+                return;
+            }
+            appData.cards.forEach(card => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'ledger-card-choice';
+                const left = document.createElement('div');
+                left.style.minWidth = '0';
+                const name = document.createElement('div');
+                name.className = 'ledger-card-choice-name';
+                name.textContent = card.name || '未命名卡片';
+                const meta = document.createElement('div');
+                meta.className = 'ledger-card-choice-meta';
+                meta.textContent = card.type || '';
+                left.append(name, meta);
+                const balance = document.createElement('div');
+                balance.className = 'ledger-card-choice-balance';
+                balance.textContent = `餘額 $${Number(card.balance || 0).toLocaleString()}`;
+                button.append(left, balance);
+                button.addEventListener('click', () => chooseExternalLedgerCard(card.id));
+                list.appendChild(button);
+            });
+        }
+
+        function chooseExternalLedgerCard(cardId) {
+            if (!externalLedgerRequest || externalLedgerRequest.status !== 'pending') return;
+            const card = appData.cards.find(c => String(c.id) === String(cardId));
+            if (!card) return showDialog('找不到所選卡片，請重新選擇。', '卡片不存在');
+
+            currentAction = { cardId: card.id, type: '扣款' };
+            captureCardViewport(card.id);
+            document.getElementById('ledger-deduction-card-modal').style.display = 'none';
+            document.getElementById('modal-title').innerText = `確認扣款：${card.name}`;
+            const context = document.getElementById('external-deduction-context');
+            context.textContent = `來源：個人雲帳本
+帳目日期：${externalLedgerRequest.date}｜卡片：${card.name}`;
+            context.style.display = 'block';
+            const amount = Number(externalLedgerRequest.amount);
+            setActionModalCalculatorMode(false);
+            document.getElementById('modal-amount').value = String(amount);
+            document.getElementById('modal-memo').value = String(externalLedgerRequest.memo || '');
+            document.getElementById('modal-memo').readOnly = true;
+            calculatorExpression = String(amount);
+            calculatorJustEvaluated = false;
+            updateCalculatorDisplay();
+            renderNativeSuggestions('扣款');
+            document.getElementById('action-modal').style.display = 'flex';
+        }
+
+        async function cancelExternalLedgerDeduction() {
+            if (!externalLedgerRequest || externalLedgerRequest.status !== 'pending') return;
+            try {
+                const result = await callLedgerHandoffGas({ action: 'cancel_transit_handoff', requestId: externalLedgerRequest.requestId });
+                cacheLedgerRequest(result.data);
+                externalLedgerRequest = null;
+                externalDeductionProcessing = false;
+                document.getElementById('ledger-deduction-card-modal').style.display = 'none';
+                cleanLedgerHandoffQuery();
+                showExternalLedgerResultDialog('已取消電子票證扣款。個人雲帳本已儲存的帳目仍會保留。', '扣款已取消');
+            } catch (e) {
+                showDialog('取消狀態尚未寫入雲端：' + e.message + '\n目前沒有執行扣款，請確認網路後再按一次取消。', '取消未完成');
+            }
+        }
+
+        function cancelActionModal() {
+            // 先返回選卡畫面，使用者仍可改選其他卡片；若要完全放棄，請在選卡畫面按「取消扣款」。
+            closeModal('action-modal');
+        }
+
+        function showExternalLedgerResultDialog(message, title) {
+            document.getElementById('dialog-title').innerText = title || '個人雲帳本扣款';
+            document.getElementById('dialog-title').style.color = 'var(--primary-color)';
+            document.getElementById('dialog-message').innerText = message;
+            const buttons = document.getElementById('dialog-buttons');
+            buttons.innerHTML = `
+                <button class="btn-cancel-modal btn-3d" onclick="closeModal('dialog-modal')">留在電子票證管家</button>
+                <button class="btn-block btn-primary btn-3d" style="margin-bottom:0;flex:1 1 40%;" onclick="returnToPersonalLedger()">返回個人雲帳本</button>
+            `;
+            document.getElementById('dialog-modal').style.display = 'flex';
+        }
+
+        function returnToPersonalLedger() {
+            window.location.assign('https://tcuteblue.github.io/THHPAB/');
+        }
+
+        async function completeExternalLedgerRequest(transaction, card, claimToken) {
+            if (!externalLedgerRequest || !transaction) return;
+            const result = await callLedgerHandoffGas({
+                action: 'complete_transit_handoff',
+                requestId: externalLedgerRequest.requestId,
+                claimToken: claimToken || externalLedgerRequest.claimToken,
+                transactionId: String(transaction.id),
+                cardId: card.id,
+                cardName: card.name,
+                completedAmount: Number(transaction.amount),
+                completedDate: externalLedgerRequest.date
+            });
+            cacheLedgerRequest(result.data);
+            externalLedgerRequest = null;
+            externalDeductionProcessing = false;
+            cleanLedgerHandoffQuery();
+        }
+
+        // ===== 個人雲帳本交接功能結束 =====
+
         function openActionModal(id, type) {
             currentAction = { cardId: id, type };
             captureCardViewport(id);
@@ -1190,8 +1559,9 @@
                 document.getElementById('topup-option-modal').style.display = 'flex';
             } else {
                 document.getElementById('modal-title').innerText = '輸入扣款';
+                document.getElementById('external-deduction-context').style.display = 'none';
                 setActionModalCalculatorMode(false);
-                document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = ''; calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay();
+                document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = ''; document.getElementById('modal-memo').readOnly = false; calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay();
                 
                 renderNativeSuggestions('扣款'); // 渲染原生 datalist 候選詞
                 
@@ -1204,42 +1574,136 @@
         function openCustomTopup() {
             closeModal('topup-option-modal');
             document.getElementById('modal-title').innerText = '輸入手動儲值';
+            document.getElementById('external-deduction-context').style.display = 'none';
             setActionModalCalculatorMode(false);
-            document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = ''; calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay();
+            document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = ''; document.getElementById('modal-memo').readOnly = false; calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay();
             
             renderNativeSuggestions('儲值'); // 渲染原生 datalist 儲值專用候選詞
             
             document.getElementById('action-modal').style.display = 'flex';
         }
 
-        function submitAction() {
-            const amt = parseInt(document.getElementById('modal-amount').value);
-            if (!amt || amt <= 0) return showDialog('請輸入有效金額');
+        async function submitAction() {
+            const isExternalLedger = !!externalLedgerRequest;
+            const amt = Number(document.getElementById('modal-amount').value);
+            if (!Number.isFinite(amt) || amt <= 0) return showDialog('請輸入有效金額');
+            if (isExternalLedger && amt !== Number(externalLedgerRequest.amount)) {
+                return showDialog('這筆金額由個人雲帳本帶入，不能在電子票證管家中更改。請返回帳本修改後重新傳送。', '金額不一致');
+            }
+            if (isExternalLedger) {
+                if (externalDeductionProcessing) return;
+                let request = externalLedgerRequest;
+                let claimToken = '';
+                try {
+                    // GAS 以 ScriptLock 原子化取得請求處理權，跨瀏覽器／獨立 PWA 也不會同時領取。
+                    const claimResult = await callLedgerHandoffGas({ action: 'claim_transit_handoff', requestId: request.requestId });
+                    request = claimResult.data;
+                    if (!claimResult.claimed) {
+                        if (request && request.status === 'completed') {
+                            externalLedgerRequest = null;
+                            closeModal('action-modal');
+                            cleanLedgerHandoffQuery();
+                            showExternalLedgerResultDialog('這筆帳本扣款已經完成，系統不會再次扣款。', '避免重複扣款');
+                        } else if (request && request.status === 'processing') {
+                            externalLedgerRequest = null;
+                            closeModal('action-modal');
+                            cleanLedgerHandoffQuery();
+                            showExternalLedgerResultDialog('這筆扣款請求已由另一個電子票證視窗取得處理權。為避免重複扣款，這個視窗不會再次執行。請確認另一個視窗或歷史記錄。', '扣款正在處理');
+                        } else {
+                            showDialog('這筆扣款請求目前狀態為「' + (request.status || '未知') + '」，可能已在其他視窗處理。為避免重複扣款，這次沒有執行。', '扣款請求已被處理');
+                        }
+                        return;
+                    }
+                    claimToken = claimResult.claimToken || request.claimToken || '';
+                    request.claimToken = claimToken;
+                    externalLedgerRequest = request;
+                    externalDeductionProcessing = true;
+
+                    const card = appData.cards.find(c => String(c.id) === String(currentAction.cardId));
+                    if (!card) throw new Error('找不到所選電子票證');
+                    const timestamp = makeTimestampForLedgerDate(request.date, request.timeZone);
+                    const autoTopupEstimate = card.balance - amt < 0 ? Math.ceil(Math.abs(card.balance - amt) / 500) * 500 : 0;
+                    const tx = executeAction(currentAction.cardId, '扣款', amt, document.getElementById('modal-memo').value.trim(), {
+                        timestamp,
+                        externalRequestId: request.requestId,
+                        sourceRecordId: request.sourceRecordId,
+                        sourceApp: '個人雲帳本'
+                    });
+                    if (!tx) throw new Error('扣款交易未能保存');
+                    const ticketBackupOk = await flushTransitCloudBackupNow();
+                    if (!ticketBackupOk) throw new Error('扣款已記錄在目前裝置，但電子票證雲端備份失敗；請先恢復網路，不要重複扣款');
+                    try {
+                        await completeExternalLedgerRequest(tx, card, claimToken);
+                    } catch (completeError) {
+                        // 扣款已存在本機交易紀錄；保留處理鎖，重新開啟時會先比對交易 ID，不會再扣一次。
+                        externalLedgerRequest = null;
+                        externalDeductionProcessing = false;
+                        closeModal('action-modal');
+                        // 保留網址上的 requestId；重新載入時會先檢查本機 externalRequestId，再補回雲端完成狀態。
+                        showExternalLedgerResultDialog('扣款已寫入電子票證本機歷史紀錄，但雲端完成回報暫時失敗。請查看歷史記錄，不要再次扣款。恢復網路後重新載入此頁即可補回狀態。', '扣款已記錄，待回報雲端');
+                        return;
+                    }
+                    closeModal('action-modal');
+                    const autoTopupNotice = autoTopupEstimate > 0 ? `\n扣款後餘額為負數，已依原規則自動儲值 NT$ ${autoTopupEstimate.toLocaleString()}。` : '';
+                    showExternalLedgerResultDialog(`已從「${card.name}」扣款 NT$ ${amt.toLocaleString()}。\n交易日期沿用個人雲帳本：${request.date}${autoTopupNotice}`, '電子票證扣款完成');
+                } catch (e) {
+                    externalDeductionProcessing = false;
+                    const savedTransaction = appData.transactions.find(t => String(t.externalRequestId || '') === String(request.requestId));
+                    if (savedTransaction) {
+                        // 交易已存在時，絕不釋放處理權，也保留網址 requestId。
+                        // 重新載入後會先比對 externalRequestId、補做雲端備份及完成回報，不會再扣一次。
+                        externalLedgerRequest = null;
+                        closeModal('action-modal');
+                        showExternalLedgerResultDialog('電子票證扣款交易已寫入目前裝置，但雲端備份或交接回報尚未完成。請先恢復網路並重新載入此頁；系統會先比對原交易、補做備份，不會再次扣款。', '扣款已記錄，待同步');
+                    } else {
+                        if (claimToken) {
+                            try {
+                                await callLedgerHandoffGas({ action: 'release_transit_handoff', requestId: request.requestId, claimToken, lastError: String(e.message || e) });
+                            } catch (releaseError) {
+                                // 若連線中斷造成無法釋放，GAS 會保留 processing 狀態以防重複扣款。
+                            }
+                        }
+                        try { externalLedgerRequest = await fetchLedgerHandoff(request.requestId); } catch (ignore) {}
+                        showDialog('扣款未完成：' + (e.message || '未知錯誤') + '\n未找到已保存的扣款交易；請確認網路後重新操作。', '扣款處理失敗');
+                    }
+                }
+                return;
+            }
             executeAction(currentAction.cardId, currentAction.type, amt, document.getElementById('modal-memo').value.trim());
             closeModal('action-modal');
         }
 
-        function executeAction(id, type, amount, memo) {
-            const c = appData.cards.find(c => c.id === id); if (!c) return;
+        function executeAction(id, type, amount, memo, options = {}) {
+            const c = appData.cards.find(c => c.id === id); if (!c) return null;
             // 若此操作不是由卡片按鈕直接開啟，也確保能記錄操作前的位置。
             if (!cardViewportAnchor || cardViewportAnchor.id !== String(id)) captureCardViewport(id);
             let autoTopupAmount = 0;
+            let mainTransaction = null;
+            const timestampOverride = options.timestamp || null;
+            const metadata = options.externalRequestId ? {
+                externalRequestId: String(options.externalRequestId),
+                sourceRecordId: String(options.sourceRecordId || ''),
+                sourceApp: String(options.sourceApp || '外部帳本')
+            } : {};
             if (type === '扣款') {
                 // 先完成扣款；只有扣款後餘額「小於 0」才自動儲值。
                 // 自動儲值以 NT$500 為單位，以負數餘額的絕對值向上取整至 NT$500 的倍數；餘額剛好 0 元不儲值。
                 c.balance -= amount;
-                addTx(id, type, amount, memo);
+                const externalSuffix = options.externalRequestId ? '_ledger_' + String(options.externalRequestId).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 12) : '';
+                mainTransaction = addTx(id, type, amount, memo, externalSuffix, 0, timestampOverride, metadata);
                 if (c.balance < 0) {
                     autoTopupAmount = Math.ceil(Math.abs(c.balance) / 500) * 500;
                     c.balance += autoTopupAmount;
-                    addTx(id, '儲值', autoTopupAmount, '負數餘額自動儲值（每次 NT$500 或其倍數）', '_topup', -1);
+                    // 若來自帳本，補足餘額的自動儲值也沿用同一個帳目日期（時間略早 1ms）。
+                    addTx(id, '儲值', autoTopupAmount, '負數餘額自動儲值（每次 NT$500 或其倍數）', options.externalRequestId ? '_ledger_topup_' + String(options.externalRequestId).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 12) : '_topup', -1, timestampOverride);
                 }
             } else {
                 if (type === '儲值') c.balance += amount;
-                addTx(id, type, amount, memo);
+                mainTransaction = addTx(id, type, amount, memo);
             }
             saveData(); renderCards(); restoreCardViewport(id); triggerAutoBackup();
-            if (autoTopupAmount > 0) setTimeout(() => showDialog(`本次扣款已完成，扣款後餘額為負數，已自動儲值 ${autoTopupAmount.toLocaleString()} 元，讓餘額回到正數。`, '自動儲值通知'), 180);
+            if (autoTopupAmount > 0 && !options.externalRequestId) setTimeout(() => showDialog(`本次扣款已完成，扣款後餘額為負數，已自動儲值 ${autoTopupAmount.toLocaleString()} 元，讓餘額回到正數。`, '自動儲值通知'), 180);
+            return mainTransaction;
         }
 
         function openEditModal(id) {
