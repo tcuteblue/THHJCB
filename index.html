@@ -525,14 +525,14 @@
                     <button type="button" class="btn-block btn-primary btn-3d" onclick="applyCalculatorResult()" style="margin-top:9px;margin-bottom:0;">使用此金額</button>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="form-group" id="modal-memo-group">
                 <label>消費明細 (選填)</label>
                 <!-- 加入 list 屬性指向 datalist，並關閉預設 autocomplete 以防干擾 -->
                 <input type="text" id="modal-memo" class="form-control" list="memo-datalist" autocomplete="off" placeholder="例如：超商買咖啡">
                 <!-- 原生的資料清單，供手機鍵盤上方顯示用 -->
                 <datalist id="memo-datalist"></datalist>
             </div>
-            <div class="modal-buttons">
+            <div class="modal-buttons" id="action-modal-buttons">
                 <button class="btn-cancel-modal btn-3d" onclick="closeModal('action-modal')">取消</button>
                 <button class="btn-block btn-primary btn-3d" style="margin-bottom:0; flex:1 1 40%;" onclick="submitAction()">確認執行</button>
             </div>
@@ -906,7 +906,7 @@
             const el = document.getElementById(id); if(el) el.style.display = 'none';
             // 關閉扣款/儲值輸入視窗時，清除計算機顯示狀態，避免下次操作其他卡片時殘留。
             if (id === 'action-modal') {
-                const calc = document.getElementById('amount-calculator'); if (calc) calc.style.display = 'none';
+                setActionModalCalculatorMode(false);
                 calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay();
             }
         }
@@ -1096,9 +1096,17 @@
         // 金額計算機：輸入欄位下方展開，支援四則運算、歸零與倒退鍵。
         let calculatorExpression = '';
         let calculatorJustEvaluated = false;
-        function showAmountCalculator() {
+        // 計算機展開時只保留金額與計算機；套用金額收起後再顯示消費明細與操作按鈕。
+        function setActionModalCalculatorMode(isOpen) {
             const box = document.getElementById('amount-calculator');
-            if (box) box.style.display = 'block';
+            const memoGroup = document.getElementById('modal-memo-group');
+            const actionButtons = document.getElementById('action-modal-buttons');
+            if (box) box.style.display = isOpen ? 'block' : 'none';
+            if (memoGroup) memoGroup.style.display = isOpen ? 'none' : '';
+            if (actionButtons) actionButtons.style.display = isOpen ? 'none' : '';
+        }
+        function showAmountCalculator() {
+            setActionModalCalculatorMode(true);
             if (!calculatorExpression) syncCalculatorFromAmount();
         }
         function syncCalculatorFromAmount() {
@@ -1159,8 +1167,7 @@
                 calculatorJustEvaluated = true;
                 updateCalculatorDisplay();
                 // 套用金額後收起計算機；空白時也可直接套用 0。
-                const box = document.getElementById('amount-calculator');
-                if (box) box.style.display = 'none';
+                setActionModalCalculatorMode(false);
                 if (input) input.blur();
             } catch (e) {
                 showDialog('無法使用此金額：' + e.message, '計算機');
@@ -1183,7 +1190,7 @@
                 document.getElementById('topup-option-modal').style.display = 'flex';
             } else {
                 document.getElementById('modal-title').innerText = '輸入扣款';
-                document.getElementById('amount-calculator').style.display = 'none';
+                setActionModalCalculatorMode(false);
                 document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = ''; calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay();
                 
                 renderNativeSuggestions('扣款'); // 渲染原生 datalist 候選詞
@@ -1197,7 +1204,7 @@
         function openCustomTopup() {
             closeModal('topup-option-modal');
             document.getElementById('modal-title').innerText = '輸入手動儲值';
-            document.getElementById('amount-calculator').style.display = 'none';
+            setActionModalCalculatorMode(false);
             document.getElementById('modal-amount').value = ''; document.getElementById('modal-memo').value = ''; calculatorExpression = ''; calculatorJustEvaluated = false; updateCalculatorDisplay();
             
             renderNativeSuggestions('儲值'); // 渲染原生 datalist 儲值專用候選詞
