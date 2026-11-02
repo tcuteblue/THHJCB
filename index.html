@@ -418,19 +418,30 @@
             <button class="btn-block btn-primary btn-3d" onclick="addCard()">新增資料</button>
         </div>
 
-        <div class="card-item" style="margin-top: 20px; padding:20px;">
+        <div class="card-item" id="settings-backup-card" style="margin-top: 20px; padding:20px;">
             <h3 style="margin-top:0; color:var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom:10px; font-size: 18px;">⚙️ 系統備份與還原</h3>
-            
+
+            <!-- 進階模式管理：只有進階模式才顯示 -->
+            <div id="advanced-mode-panel" style="display:none; background:var(--bg-color); border:1px solid var(--border-color); border-radius:10px; padding:14px; margin-bottom:14px;">
+                <div style="font-weight:bold; color:var(--primary-color); margin-bottom:8px;">🔐 進階模式管理</div>
+                <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px; line-height:1.5;">本裝置會記住進階模式。密碼以共用 GAS 雲端資料為唯一依據，不在本機保存。</div>
+                <button class="btn-block btn-primary btn-3d" onclick="changeAdvancedPassword()">修改進階模式密碼</button>
+                <button class="btn-block btn-cancel-modal btn-3d" style="margin-top:8px;" onclick="disableAdvancedMode()">關閉進階模式</button>
+            </div>
+
+            <div id="advanced-cloud-controls" style="display:none;">
+                <div class="backup-grid" style="margin-bottom:10px;">
+                    <button class="btn-grid btn-c-bak btn-3d" id="btn-cloud-backup" onclick="cloudBackup(false)">☁️ 雲端備份</button>
+                    <button class="btn-grid btn-c-res btn-3d" id="btn-cloud-restore" onclick="cloudRestore()">☁️ 雲端還原</button>
+                </div>
+            </div>
+
+            <!-- 本機備份／還原在一般與進階模式都保留 -->
             <div class="backup-grid">
-                <button class="btn-grid btn-c-bak btn-3d" id="btn-cloud-backup" onclick="cloudBackup(false)">☁️ 雲端備份</button>
-                <button class="btn-grid btn-c-res btn-3d" id="btn-cloud-restore" onclick="cloudRestore()">☁️ 雲端還原</button>
                 <button class="btn-grid btn-l-bak btn-3d" onclick="exportBackup(true)">📥 本機備份</button>
                 <button class="btn-grid btn-l-res btn-3d" onclick="document.getElementById('import-file').click()">📤 本機還原</button>
             </div>
-            
             <button class="btn-block btn-green btn-3d" style="margin-top: 15px;" onclick="exportTxt()">📝 匯出卡片純文字資訊 (.txt)</button>
-
-            <!-- 隱藏的檔案上傳元件 -->
             <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importBackup(event)">
         </div>
     </div>
@@ -642,6 +653,11 @@
             window.addEventListener('scroll', updateBackToTopButton, { passive: true });
             updateBackToTopButton();
             loadData();
+            // 清除舊版曾存於本機的密碼與舊模式旗標；舊旗標不可繞過首次雲端驗證。
+            localStorage.removeItem('TransitApp_AdvancedPassword');
+            localStorage.removeItem('TransitApp_AdvancedMode');
+            applyModeUI();
+            setupSettingsSecretGesture();
             history.pushState('app-trap', '', '');
 
             if (!appData.sortPreference) appData.sortPreference = 'default';
@@ -653,12 +669,14 @@
             toggleJcbUI('new-card');
             updateHistorySelect();
             initMultiSortOptions();
-            // 先立即顯示本機資料；接著比對雲端，若另一個獨立 PWA 有較新備份再更新畫面。
+            // 一般模式完全不讀取雲端；進階模式才比對既有雲端備份。
             renderCards();
             renderHistory();
-            await syncTransitDataFromCloudOnStartup();
-            renderCards();
-            renderHistory();
+            if (isAdvancedMode()) {
+                await syncTransitDataFromCloudOnStartup();
+                renderCards();
+                renderHistory();
+            }
 
             const installBtn = document.getElementById('install-app-btn');
             if (isPWA()) { installBtn.style.display = 'none'; } else {
@@ -698,6 +716,99 @@
 
         function confirmExitApp() { allowAppExit = true; history.go(-2); }
 
+        // === 一般模式／進階模式（密碼只存放於共用 GAS 雲端） ===
+        const ADVANCED_MODE_KEY = 'TransitApp_AdvancedMode_CloudVerified';
+        const ADVANCED_GAS_URL = LEDGER_GAS_URL; // 沿用既有共用 GAS；不更動票證資料原本的 GAS_URL。
+        let settingsSecretTapCount = 0;
+        let settingsSecretTapTimer = null;
+
+        function isAdvancedMode() { return localStorage.getItem(ADVANCED_MODE_KEY) === '1'; }
+
+        function applyModeUI() {
+            const advanced = isAdvancedMode();
+            const cloud = document.getElementById('advanced-cloud-controls');
+            const panel = document.getElementById('advanced-mode-panel');
+            if (cloud) cloud.style.display = advanced ? 'block' : 'none';
+            if (panel) panel.style.display = advanced ? 'block' : 'none';
+            if (!advanced && cloudBackupTimer) {
+                clearTimeout(cloudBackupTimer);
+                cloudBackupTimer = null;
+            }
+        }
+
+        async function callAdvancedPasswordApi(payload) {
+            const response = await fetch(ADVANCED_GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            const result = await response.json();
+            if (!result || result.status !== 'success') throw new Error(result?.message || '雲端密碼服務回應異常');
+            return result;
+        }
+
+        async function handleSettingsSecretTap() {
+            settingsSecretTapCount = 0;
+            if (isAdvancedMode()) {
+                showDialog('目前已是進階模式。可在本頁修改密碼或關閉進階模式。', '進階模式');
+                return;
+            }
+            const entered = window.prompt('請輸入進階模式密碼');
+            if (entered === null) return;
+            try {
+                // 首次使用時，GAS 僅接受預設密碼 41927 並建立雲端密碼檔；之後只比對雲端密碼。
+                await callAdvancedPasswordApi({ action: 'transit_password_verify', password: String(entered) });
+                localStorage.setItem(ADVANCED_MODE_KEY, '1');
+                applyModeUI();
+                showDialog('雲端密碼驗證成功，已進入進階模式。本裝置下次開啟仍會維持進階模式。', '進階模式啟用');
+                // 成功進階驗證後才進行啟動時雲端資料比對。
+                syncTransitDataFromCloudOnStartup().then(() => { renderCards(); renderHistory(); });
+            } catch (e) {
+                showDialog('無法進入進階模式：' + e.message + '\n請確認網路及共用 GAS 部署狀態。', '雲端驗證失敗');
+            }
+        }
+
+        function changeAdvancedPassword() {
+            if (!isAdvancedMode()) return;
+            const currentPassword = window.prompt('請輸入目前的雲端進階模式密碼');
+            if (currentPassword === null) return;
+            const newPassword = window.prompt('請輸入新的進階模式密碼');
+            if (newPassword === null) return;
+            if (!String(newPassword).trim()) { showDialog('新密碼不可空白。', '提醒'); return; }
+            if (String(newPassword).length > 64) { showDialog('新密碼最多 64 個字元。', '提醒'); return; }
+            callAdvancedPasswordApi({ action: 'transit_password_change', currentPassword: String(currentPassword), newPassword: String(newPassword) })
+                .then(() => showDialog('雲端進階模式密碼已更新。所有裝置下次驗證時都必須使用新密碼。', '修改成功'))
+                .catch(e => showDialog('密碼修改失敗：' + e.message, '雲端更新失敗'));
+        }
+
+        function disableAdvancedMode() {
+            if (!isAdvancedMode()) return;
+            showDialog('關閉後將回到一般模式，自動雲端備份會停用，雲端備份與還原按鈕也會隱藏。下次進入進階模式必須重新輸入雲端密碼。確定要關閉嗎？', '關閉進階模式', true, (ok) => {
+                if (!ok) return;
+                localStorage.removeItem(ADVANCED_MODE_KEY);
+                if (cloudBackupTimer) clearTimeout(cloudBackupTimer);
+                cloudBackupTimer = null;
+                applyModeUI();
+                showDialog('已切換回一般模式。下次進入進階模式必須重新輸入雲端密碼。', '一般模式');
+            });
+        }
+
+        function setupSettingsSecretGesture() {
+            const settingsPage = document.getElementById('tab-settings');
+            if (!settingsPage || settingsPage.dataset.secretGestureReady === '1') return;
+            settingsPage.dataset.secretGestureReady = '1';
+            settingsPage.addEventListener('click', (event) => {
+                // 手勢綁定整個「系統設定」頁面，不綁在「系統備份與還原」標題；
+                // 點擊輸入欄位、按鈕或連結不計入，避免正常操作誤觸。
+                if (event.target.closest('button, input, select, textarea, a, label')) return;
+                settingsSecretTapCount++;
+                if (settingsSecretTapTimer) clearTimeout(settingsSecretTapTimer);
+                settingsSecretTapTimer = setTimeout(() => { settingsSecretTapCount = 0; }, 2200);
+                if (settingsSecretTapCount >= 5) handleSettingsSecretTap();
+            });
+        }
+
         const loadData = () => { 
             const data = localStorage.getItem(DB_KEY); 
             if (data) {
@@ -721,12 +832,17 @@
         let cloudBackupTimer = null;
 
         // === 1. 自動備份改為：背景推送至雲端 ===
-        const triggerAutoBackup = () => { 
-            appData.lastBackupTime = new Date().toISOString(); 
-            saveData(); 
-            // 防抖機制：延遲 3 秒執行，避免連續輸入時重複呼叫 API
+        const triggerAutoBackup = () => {
+            // 一般模式只保留本機資料，不執行雲端自動備份。
+            if (!isAdvancedMode()) {
+                if (cloudBackupTimer) clearTimeout(cloudBackupTimer);
+                cloudBackupTimer = null;
+                return;
+            }
+            appData.lastBackupTime = new Date().toISOString();
+            saveData();
             if (cloudBackupTimer) clearTimeout(cloudBackupTimer);
-            cloudBackupTimer = setTimeout(() => { cloudBackup(true); }, 3000);
+            cloudBackupTimer = setTimeout(() => { if (isAdvancedMode()) cloudBackup(true); }, 3000);
         };
 
         // === 2. 本機備份 (保留給手動點擊使用) ===
@@ -740,6 +856,7 @@
 
         // === 3. 雲端備份 (GAS) ===
         async function cloudBackup(isAuto = false) {
+            if (!isAdvancedMode()) return false;
             const btn = document.getElementById('btn-cloud-backup');
             if (!isAuto) {
                 isCloudSyncing = 'backup';
@@ -778,6 +895,7 @@
 
         // === 4. 雲端還原 (GAS) ===
         function cloudRestore() {
+            if (!isAdvancedMode()) return;
             showDialog("⚠️ 警告：雲端還原將會覆蓋您目前的本機資料！\n\n確定要進行還原嗎？", "雲端還原確認", true, async (res) => {
                 if (!res) return;
                 
@@ -817,6 +935,7 @@
         // 若 iOS 的不同獨立 PWA／Safari 環境各有自己的 localStorage，
         // 啟動時用電子票證管家既有的雲端備份比對 lastBackupTime，取較新的完整資料。
         async function syncTransitDataFromCloudOnStartup() {
+            if (!isAdvancedMode()) return false;
             const localHasData = !!(localStorage.getItem(DB_KEY) && (appData.cards.length || appData.transactions.length));
             const localTime = Date.parse(appData.lastBackupTime || '') || 0;
             try {
