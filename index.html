@@ -546,7 +546,7 @@
             <div class="form-group" id="modal-memo-group">
                 <label>消費明細 (選填)</label>
                 <!-- 加入 list 屬性指向 datalist，並關閉預設 autocomplete 以防干擾 -->
-                <input type="text" id="modal-memo" class="form-control" list="memo-datalist" autocomplete="off" placeholder="例如：超商買咖啡">
+                <input type="text" id="modal-memo" class="form-control" list="memo-datalist" autocomplete="off" placeholder="可輸入明細，或選擇歷史待選詞">
                 <!-- 原生的資料清單，供手機鍵盤上方顯示用 -->
                 <datalist id="memo-datalist"></datalist>
             </div>
@@ -1610,8 +1610,12 @@
             const amount = Number(externalLedgerRequest.amount);
             setActionModalCalculatorMode(false);
             document.getElementById('modal-amount').value = String(amount);
-            document.getElementById('modal-memo').value = String(externalLedgerRequest.memo || '');
-            document.getElementById('modal-memo').readOnly = true;
+            const memoInput = document.getElementById('modal-memo');
+            // 帳本明細先帶入作為預填值，但由使用者在票證端自行補充或修改。
+            // 保持可編輯，才能使用下方原生 datalist 的扣款歷史待選詞。
+            memoInput.value = String(externalLedgerRequest.memo || '');
+            memoInput.readOnly = false;
+            memoInput.disabled = false;
             calculatorExpression = String(amount);
             calculatorJustEvaluated = false;
             updateCalculatorDisplay();
