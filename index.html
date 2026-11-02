@@ -390,6 +390,7 @@
 
     <!-- Tab: 系統設定 -->
     <div id="tab-settings" class="tab-content">
+        <h2 id="settings-secret-title" style="margin:0 0 16px; padding-bottom:10px; border-bottom:2px solid var(--border-color); color:var(--text-main); font-size:20px;">⚙️ 系統設定</h2>
         <div class="card-item" style="padding:20px;">
             <h3 style="margin-top:0; color:var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom:10px; font-size: 18px;">✨ 新增卡片</h3>
             <div class="form-group"><label>卡片名稱</label><input type="text" id="new-card-name" class="form-control" placeholder="例如：科技通勤卡"></div>
@@ -450,7 +451,7 @@
     <div class="bottom-nav">
         <button class="nav-btn active" onclick="switchTab('cards', this)"><div class="nav-icon">💳</div><span>我的卡片</span></button>
         <button class="nav-btn" onclick="switchTab('history', this)"><div class="nav-icon">📊</div><span>歷史記錄</span></button>
-        <button class="nav-btn" onclick="switchTab('settings', this)"><div class="nav-icon">⚙️</div><span>系統設定</span></button>
+        <button id="settings-nav-secret-trigger" class="nav-btn" onclick="switchTab('settings', this)"><div class="nav-icon">⚙️</div><span>系統設定</span></button>
     </div>
 
     <!-- 無文字浮動回頂部按鈕：僅在卡片頁向下捲動時顯示 -->
@@ -750,6 +751,8 @@
 
         async function handleSettingsSecretTap() {
             settingsSecretTapCount = 0;
+            if (settingsSecretTapTimer) clearTimeout(settingsSecretTapTimer);
+            settingsSecretTapTimer = null;
             if (isAdvancedMode()) {
                 showDialog('目前已是進階模式。可在本頁修改密碼或關閉進階模式。', '進階模式');
                 return;
@@ -794,19 +797,29 @@
             });
         }
 
+        function registerSettingsSecretTap() {
+            settingsSecretTapCount++;
+            if (settingsSecretTapTimer) clearTimeout(settingsSecretTapTimer);
+            settingsSecretTapTimer = setTimeout(() => {
+                settingsSecretTapCount = 0;
+                settingsSecretTapTimer = null;
+            }, 2500);
+            if (settingsSecretTapCount >= 5) handleSettingsSecretTap();
+        }
+
         function setupSettingsSecretGesture() {
-            const settingsPage = document.getElementById('tab-settings');
-            if (!settingsPage || settingsPage.dataset.secretGestureReady === '1') return;
-            settingsPage.dataset.secretGestureReady = '1';
-            settingsPage.addEventListener('click', (event) => {
-                // 手勢綁定整個「系統設定」頁面，不綁在「系統備份與還原」標題；
-                // 點擊輸入欄位、按鈕或連結不計入，避免正常操作誤觸。
-                if (event.target.closest('button, input, select, textarea, a, label')) return;
-                settingsSecretTapCount++;
-                if (settingsSecretTapTimer) clearTimeout(settingsSecretTapTimer);
-                settingsSecretTapTimer = setTimeout(() => { settingsSecretTapCount = 0; }, 2200);
-                if (settingsSecretTapCount >= 5) handleSettingsSecretTap();
-            });
+            const settingsNavButton = document.getElementById('settings-nav-secret-trigger');
+            if (!settingsNavButton || settingsNavButton.dataset.secretGestureReady === '1') return;
+            settingsNavButton.dataset.secretGestureReady = '1';
+
+            // 解鎖區唯一限定為底部「系統設定」導覽按鈕。
+            // 無論目前是否已在系統設定頁，每次點擊都計為一下。
+            // 從其他頁面進入設定頁的第一下也會計入；進入後繼續點擊即可累計。
+            // 連續點擊間隔超過 2.5 秒，會由 registerSettingsSecretTap() 自動歸零。
+            // 頁面標題、一般內容區、空白處及其他設定按鈕均不會觸發解鎖。
+            settingsNavButton.addEventListener('click', () => {
+                registerSettingsSecretTap();
+            }, true);
         }
 
         const loadData = () => { 
