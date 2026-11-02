@@ -546,7 +546,7 @@
             <div class="form-group" id="modal-memo-group">
                 <label>消費明細 (選填)</label>
                 <!-- 加入 list 屬性指向 datalist，並關閉預設 autocomplete 以防干擾 -->
-                <input type="text" id="modal-memo" class="form-control" list="memo-datalist" autocomplete="off" placeholder="可輸入明細，或選擇歷史待選詞">
+                <input type="text" id="modal-memo" class="form-control" list="memo-datalist" autocomplete="off" placeholder="例如：超商買咖啡">
                 <!-- 原生的資料清單，供手機鍵盤上方顯示用 -->
                 <datalist id="memo-datalist"></datalist>
             </div>
@@ -616,6 +616,8 @@
         const DB_KEY = 'TransitApp_Data';
         const LEDGER_REQUEST_PREFIX = 'tcuteblue:ledger-transit:request:';
         const LEDGER_GAS_URL = 'https://script.google.com/macros/s/AKfycbw0wAnCPZkw3nlyx0Eg08Ejk49oG_itD82PqH9IP4X7S4oR5br1NTCmlUJsNfME2kbZ/exec';
+        // 電子票證的密碼、扣款交接及雲端備份／還原統一使用同一個共用 GAS。
+        const TRANSIT_SHARED_GAS_URL = LEDGER_GAS_URL;
         let appData = { cards: [], transactions: [], customOrder: [], isOverviewCollapsed: false, starBaseSortPreference: 'default', multiSort: {l1: 'type-default', l2: 'balance-desc', l3: 'none', l4: 'none'} };
         let deferredPrompt, currentAction = { cardId: null, type: null };
         let externalLedgerRequest = null;
@@ -719,7 +721,7 @@
 
         // === 一般模式／進階模式（密碼只存放於共用 GAS 雲端） ===
         const ADVANCED_MODE_KEY = 'TransitApp_AdvancedMode_CloudVerified';
-        const ADVANCED_GAS_URL = LEDGER_GAS_URL; // 沿用既有共用 GAS；不更動票證資料原本的 GAS_URL。
+        const ADVANCED_GAS_URL = TRANSIT_SHARED_GAS_URL; // 沿用既有共用 GAS；不更動票證資料原本的 GAS_URL。
         let settingsSecretTapCount = 0;
         let settingsSecretTapTimer = null;
 
@@ -840,7 +842,9 @@
         const saveData = () => { localStorage.setItem(DB_KEY, JSON.stringify(appData)); updateHistorySelect(); renderHistory(); };
         
         // === 雲端備份變數 ===
-        const gasUrl = 'https://script.google.com/macros/s/AKfycbz9Tohi--mDE6Pk5u6P20xBiHsQ-yMR1rDmfG5Q7LBmxaOeLxedtHp0iMwh4AuCyt4Ncw/exec';
+        // 舊版資料備份 GAS 僅作一次性遷移來源：只有共用 GAS 尚無電子票證備份時才會讀取。
+        // 新備份與日常還原一律使用 TRANSIT_SHARED_GAS_URL。
+        const TRANSIT_LEGACY_BACKUP_GAS_URL = 'https://script.google.com/macros/s/AKfycbz9Tohi--mDE6Pk5u6P20xBiHsQ-yMR1rDmfG5Q7LBmxaOeLxedtHp0iMwh4AuCyt4Ncw/exec';
         let isCloudSyncing = ''; 
         let cloudBackupTimer = null;
 
@@ -867,7 +871,69 @@
             if(isManual) showDialog('本機備份檔下載程序已啟動！', '備份完成');
         }
 
-        // === 3. 雲端備份 (GAS) ===
+        // === 電子票證雲端資料 API：正式路徑只使用共用 GAS ===
+        async function postTransitSharedGas(payload) {
+            const response = await fetch(TRANSIT_SHARED_GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            const result = await response.json();
+            if (!result || result.status !== 'success') {
+                throw new Error(result?.message || '共用 GAS 回應格式異常');
+            }
+            return result;
+        }
+
+        // 僅在共用 GAS 尚無電子票證備份時，嘗試從舊 GAS 匯入一次。
+        // 匯入成功後立即寫入共用 GAS；往後有共用備份時，不會再呼叫舊 GAS。
+        async function fetchTransitCloudBackupWithMigration() {
+            const sharedResult = await postTransitSharedGas({ action: 'transit_cloud_restore' });
+            if (sharedResult.found === true && sharedResult.data) return sharedResult;
+            if (sharedResult.found !== false) {
+                if (sharedResult.data) return sharedResult;
+                throw new Error(sharedResult.message || '共用 GAS 沒有回傳電子票證備份資料');
+            }
+
+            const legacyResponse = await fetch(TRANSIT_LEGACY_BACKUP_GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'restore_from_cloud', fileName: '電子票證管家_雲端備份.json' }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            if (!legacyResponse.ok) throw new Error('舊版備份匯入服務 HTTP ' + legacyResponse.status);
+            const legacyResult = await legacyResponse.json();
+            if (!legacyResult || legacyResult.status !== 'success' || !legacyResult.data) {
+                const message = String(legacyResult?.message || '舊版雲端備份讀取失敗');
+                if (/找不到.*備份檔/.test(message)) return sharedResult;
+                throw new Error(message);
+            }
+
+            const legacyRaw = typeof legacyResult.data === 'string'
+                ? legacyResult.data
+                : JSON.stringify(legacyResult.data);
+            let legacyData;
+            try { legacyData = typeof legacyResult.data === 'string' ? JSON.parse(legacyResult.data) : legacyResult.data; }
+            catch (e) { throw new Error('舊版雲端備份 JSON 格式錯誤，未寫入共用 GAS。'); }
+            if (!legacyData || !Array.isArray(legacyData.cards) || !Array.isArray(legacyData.transactions)) {
+                throw new Error('舊版雲端備份內容不符合電子票證資料格式，未寫入共用 GAS。');
+            }
+
+            const migrated = await postTransitSharedGas({
+                action: 'transit_cloud_backup',
+                backupData: legacyData
+            });
+            return {
+                status: 'success',
+                found: true,
+                data: legacyRaw,
+                modifiedAt: legacyResult.modifiedAt || migrated.modifiedAt || null,
+                migratedFromLegacy: true,
+                message: '已將舊版電子票證備份轉存至共用 GAS。'
+            };
+        }
+
+        // === 3. 雲端備份 (共用 GAS) ===
         async function cloudBackup(isAuto = false) {
             if (!isAdvancedMode()) return false;
             const btn = document.getElementById('btn-cloud-backup');
@@ -880,13 +946,10 @@
                 // 讀到雲端資料時，無法正確比較哪一份資料較新。
                 const backupTime = new Date().toISOString();
                 const backupSnapshot = { ...appData, lastBackupTime: backupTime };
-                const payload = {
-                    action: "auto_backup",
-                    fileName: "電子票證管家_雲端備份.json", 
+                const result = await postTransitSharedGas({
+                    action: "transit_cloud_backup",
                     backupData: backupSnapshot
-                };
-                const response = await fetch(gasUrl, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
-                const result = await response.json();
+                });
                 
                 if (result.status === 'success') {
                     appData.lastBackupTime = backupTime; saveData(); renderCards();
@@ -917,16 +980,17 @@
                 if (btn) { btn.disabled = true; btn.innerHTML = '⏳ 還原中...'; }
                 
                 try {
-                    const payload = { action: "restore_from_cloud", fileName: "電子票證管家_雲端備份.json" };
-                    const response = await fetch(gasUrl, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
-                    const result = await response.json();
+                    const result = await fetchTransitCloudBackupWithMigration();
                     
-                    if (result.status === 'success' && result.data) {
+                    if (result.status === 'success' && result.found !== false && result.data) {
                         const cloudData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
                         if (cloudData.cards && cloudData.transactions) {
                             appData = { ...appData, ...cloudData };
                             saveData();
-                            showDialog("✅ 雲端資料已成功還原！\n點擊確定後將重新載入頁面。", "還原成功", false, () => {
+                            const restoreMessage = result.migratedFromLegacy
+                                ? "✅ 舊版雲端資料已匯入共用 GAS，並成功還原！\n點擊確定後將重新載入頁面。"
+                                : "✅ 雲端資料已成功還原！\n點擊確定後將重新載入頁面。";
+                            showDialog(restoreMessage, "還原成功", false, () => {
                                 window.location.reload(); 
                             });
                         } else {
@@ -952,14 +1016,8 @@
             const localHasData = !!(localStorage.getItem(DB_KEY) && (appData.cards.length || appData.transactions.length));
             const localTime = Date.parse(appData.lastBackupTime || '') || 0;
             try {
-                const response = await fetch(gasUrl, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'restore_from_cloud', fileName: '電子票證管家_雲端備份.json' }),
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                });
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                const result = await response.json();
-                if (!result || result.status !== 'success' || !result.data) return false;
+                const result = await fetchTransitCloudBackupWithMigration();
+                if (!result || result.status !== 'success' || result.found === false || !result.data) return false;
                 const cloudData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
                 if (!cloudData || !Array.isArray(cloudData.cards) || !Array.isArray(cloudData.transactions)) return false;
                 const cloudTime = Date.parse(cloudData.lastBackupTime || '') || 0;
@@ -1610,12 +1668,8 @@
             const amount = Number(externalLedgerRequest.amount);
             setActionModalCalculatorMode(false);
             document.getElementById('modal-amount').value = String(amount);
-            const memoInput = document.getElementById('modal-memo');
-            // 帳本明細先帶入作為預填值，但由使用者在票證端自行補充或修改。
-            // 保持可編輯，才能使用下方原生 datalist 的扣款歷史待選詞。
-            memoInput.value = String(externalLedgerRequest.memo || '');
-            memoInput.readOnly = false;
-            memoInput.disabled = false;
+            document.getElementById('modal-memo').value = String(externalLedgerRequest.memo || '');
+            document.getElementById('modal-memo').readOnly = true;
             calculatorExpression = String(amount);
             calculatorJustEvaluated = false;
             updateCalculatorDisplay();
