@@ -376,7 +376,7 @@
 <body>
     <div class="header" role="button" tabindex="0" title="點擊回到頂部" aria-label="電子票證管家，點擊回到頂部" onclick="scrollToTop()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToTop();}">
         <div class="header-title">電子票證管家</div>
-        <div id="app-mode-indicator" class="app-mode-indicator is-general" aria-live="polite">一般模式</div>
+        <div id="app-mode-indicator" class="app-mode-indicator" aria-live="polite" aria-hidden="true"></div>
     </div>
 
     <!-- Tab: 我的卡片 -->
@@ -783,9 +783,10 @@
 
             // 右上角模式文字與原本置中的標題同列，所有分頁共用同一個狀態。
             if (modeIndicator) {
-                modeIndicator.textContent = advanced ? '進階模式' : '一般模式';
+                modeIndicator.textContent = advanced ? '進階模式' : '';
+                modeIndicator.setAttribute('aria-hidden', advanced ? 'false' : 'true');
                 modeIndicator.classList.toggle('is-advanced', advanced);
-                modeIndicator.classList.toggle('is-general', !advanced);
+                modeIndicator.classList.remove('is-general');
             }
 
             if (!advanced && cloudBackupTimer) {
