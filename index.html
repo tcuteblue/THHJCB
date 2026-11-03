@@ -56,6 +56,34 @@
         }
         .header:active { opacity: 0.82; }
 
+        /* 目前模式狀態：放在固定頂部標題內，切換任何分頁都能清楚辨識 */
+        .app-mode-indicator {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin: 8px auto 0;
+            padding: 4px 12px;
+            border: 1px solid transparent;
+            border-radius: 999px;
+            font-size: 12px;
+            line-height: 1.4;
+            font-weight: 800;
+            letter-spacing: .4px;
+            vertical-align: middle;
+            pointer-events: none;
+        }
+        .app-mode-indicator.is-general {
+            color: #075985;
+            background: #e0f2fe;
+            border-color: #7dd3fc;
+        }
+        .app-mode-indicator.is-advanced {
+            color: #6d28d9;
+            background: #ede9fe;
+            border-color: #c4b5fd;
+        }
+
         /* 右下角浮動回頂部按鈕：不占用卡片空間 */
         .back-to-top-btn {
             position: fixed;
@@ -336,7 +364,10 @@
 
 </head>
 <body>
-    <div class="header" role="button" tabindex="0" title="點擊回到頂部" aria-label="點擊回到頂部" onclick="scrollToTop()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToTop();}">電子票證管家</div>
+    <div class="header" role="button" tabindex="0" title="點擊回到頂部" aria-label="電子票證管家，點擊回到頂部" onclick="scrollToTop()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToTop();}">
+        <div>電子票證管家</div>
+        <div id="app-mode-indicator" class="app-mode-indicator is-general" aria-live="polite">目前模式：一般模式</div>
+    </div>
 
     <!-- Tab: 我的卡片 -->
     <div id="tab-cards" class="tab-content active-tab">
@@ -736,8 +767,17 @@
             const advanced = isAdvancedMode();
             const cloud = document.getElementById('advanced-cloud-controls');
             const panel = document.getElementById('advanced-mode-panel');
+            const modeIndicator = document.getElementById('app-mode-indicator');
             if (cloud) cloud.style.display = advanced ? 'block' : 'none';
             if (panel) panel.style.display = advanced ? 'block' : 'none';
+
+            // 固定在頂部標題列的模式提示，所有分頁共用同一個狀態。
+            if (modeIndicator) {
+                modeIndicator.textContent = advanced ? '目前模式：進階模式' : '目前模式：一般模式';
+                modeIndicator.classList.toggle('is-advanced', advanced);
+                modeIndicator.classList.toggle('is-general', !advanced);
+            }
+
             if (!advanced && cloudBackupTimer) {
                 clearTimeout(cloudBackupTimer);
                 cloudBackupTimer = null;
