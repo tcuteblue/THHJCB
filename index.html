@@ -47,14 +47,52 @@
         }
         
         /* Navbar & Tabs */
-        .header { 
-            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); color: var(--primary-color); 
-            padding: 16px 20px; text-align: center; font-size: 24px; font-weight: bold; 
-            letter-spacing: 2px; position: sticky; top: 0; z-index: 10; 
+        .header {
+            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); color: var(--primary-color);
+            /* 三欄等寬配置：中間標題維持真正置中，模式文字放在右側欄位。 */
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+            align-items: center;
+            column-gap: 6px;
+            padding: 16px 14px;
+            text-align: center; font-size: 24px; font-weight: bold;
+            letter-spacing: 2px; position: sticky; top: 0; z-index: 10;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             cursor: pointer; user-select: none; -webkit-user-select: none;
         }
+        .header-title {
+            grid-column: 2;
+            white-space: nowrap;
+            line-height: 1.2;
+        }
         .header:active { opacity: 0.82; }
+
+        /* 模式文字直接排在原有標題列右側，不使用浮動或固定定位。 */
+        .app-mode-indicator {
+            grid-column: 3;
+            justify-self: end;
+            display: inline-block;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            font-size: 12px;
+            line-height: 1.2;
+            font-weight: 800;
+            letter-spacing: 0;
+            white-space: nowrap;
+            vertical-align: middle;
+            pointer-events: none;
+        }
+        .app-mode-indicator.is-general { color: #075985; }
+        .app-mode-indicator.is-advanced { color: #6d28d9; }
+
+        @media (max-width: 360px) {
+            .header { padding-left: 10px; padding-right: 10px; column-gap: 4px; }
+            .header-title { font-size: 21px; letter-spacing: 1px; }
+            .app-mode-indicator { font-size: 11px; }
+        }
 
         /* 右下角浮動回頂部按鈕：不占用卡片空間 */
         .back-to-top-btn {
@@ -254,89 +292,76 @@
         .btn-l-res { background: linear-gradient(135deg, #a2d9ce, #73c6b6); color: #0b5345; box-shadow: 0 4px 0 #76d7c4; }
     </style>
 
+<style id="edit-calculator-modal-position-fix">
+/* 編輯記錄的計算機展開時，暫時將視窗上移，避免金額欄被螢幕邊界或計算機區域遮住。 */
+#edit-modal.edit-calculator-open {
+    align-items: flex-start !important;
+    justify-content: center !important;
+    box-sizing: border-box;
+    padding: max(10px, env(safe-area-inset-top)) 0 10px;
+}
+#edit-modal.edit-calculator-open > .modal {
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+</style>
+
+
 <style id="amount-calculator-contrast-fix">
-/* 高對比金額計算機：避免沿用全站按鈕配色造成文字看不清 */
-#amount-calculator {
-  background: #f1f5f9 !important;
-  border: 2px solid #64748b !important;
-  color: #111827 !important;
-  box-shadow: 0 4px 14px rgba(15,23,42,.12) !important;
+/* 高對比金額計算機：原新增／扣款計算機與編輯明細計算機共用樣式 */
+#amount-calculator, #edit-amount-calculator {
+  background: #f1f5f9 !important; border: 2px solid #64748b !important;
+  color: #111827 !important; box-shadow: 0 4px 14px rgba(15,23,42,.12) !important;
 }
-#amount-calculator #calculator-expression {
-  color: #334155 !important;
-  font-size: 16px !important;
-  font-weight: 700 !important;
-  min-height: 24px !important;
+#amount-calculator #calculator-expression, #edit-amount-calculator #edit-calculator-expression {
+  color: #334155 !important; font-size: 16px !important; font-weight: 700 !important; min-height: 24px !important;
 }
-#amount-calculator #calculator-display {
-  color: #111827 !important;
-  background: #ffffff !important;
-  border: 1px solid #94a3b8 !important;
-  border-radius: 8px !important;
-  padding: 9px 10px !important;
-  margin: 4px 0 12px !important;
-  min-height: 48px !important;
-  font-size: 32px !important;
-  font-weight: 800 !important;
-  line-height: 1.35 !important;
+#amount-calculator #calculator-display, #edit-amount-calculator #edit-calculator-display {
+  color: #111827 !important; background: #ffffff !important; border: 1px solid #94a3b8 !important;
+  border-radius: 8px !important; padding: 9px 10px !important; margin: 4px 0 12px !important;
+  min-height: 48px !important; font-size: 32px !important; font-weight: 800 !important; line-height: 1.35 !important;
 }
-#amount-calculator .calculator-grid button {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 2px solid #64748b !important;
-  border-radius: 10px !important;
-  min-height: 50px !important;
-  padding: 8px 4px !important;
-  font-size: 22px !important;
-  font-weight: 800 !important;
-  line-height: 1.2 !important;
-  text-shadow: none !important;
-  box-shadow: 0 2px 0 #cbd5e1 !important;
-  opacity: 1 !important;
+#amount-calculator .calculator-grid button, #edit-amount-calculator .calculator-grid button {
+  background: #ffffff !important; color: #111827 !important; border: 2px solid #64748b !important;
+  border-radius: 10px !important; min-height: 50px !important; padding: 8px 4px !important;
+  font-size: 22px !important; font-weight: 800 !important; line-height: 1.2 !important;
+  text-shadow: none !important; box-shadow: 0 2px 0 #cbd5e1 !important; opacity: 1 !important;
 }
-#amount-calculator .calculator-grid button:first-child {
-  background: #fee2e2 !important;
-  color: #991b1b !important;
-  border-color: #dc2626 !important;
+#amount-calculator .calculator-grid button:first-child, #edit-amount-calculator .calculator-grid button:first-child {
+  background: #fee2e2 !important; color: #991b1b !important; border-color: #dc2626 !important;
 }
-#amount-calculator .calculator-grid button:nth-child(3),
-#amount-calculator .calculator-grid button:nth-child(4),
-#amount-calculator .calculator-grid button:nth-child(8),
-#amount-calculator .calculator-grid button:nth-child(12) {
-  background: #dbeafe !important;
-  color: #1e3a8a !important;
-  border-color: #2563eb !important;
+#amount-calculator .calculator-grid button:nth-child(3), #edit-amount-calculator .calculator-grid button:nth-child(3),
+#amount-calculator .calculator-grid button:nth-child(4), #edit-amount-calculator .calculator-grid button:nth-child(4),
+#amount-calculator .calculator-grid button:nth-child(8), #edit-amount-calculator .calculator-grid button:nth-child(8),
+#amount-calculator .calculator-grid button:nth-child(12), #edit-amount-calculator .calculator-grid button:nth-child(12) {
+  background: #dbeafe !important; color: #1e3a8a !important; border-color: #2563eb !important;
 }
-#amount-calculator .calculator-grid button:nth-child(16) {
-  background: #166534 !important;
-  color: #ffffff !important;
-  border-color: #14532d !important;
+#amount-calculator .calculator-grid button:nth-child(16), #edit-amount-calculator .calculator-grid button:nth-child(16) {
+  background: #166534 !important; color: #ffffff !important; border-color: #14532d !important;
 }
-#amount-calculator .calculator-grid button:active {
-  transform: translateY(1px) !important;
-  box-shadow: none !important;
+#amount-calculator .calculator-grid button:active, #edit-amount-calculator .calculator-grid button:active {
+  transform: translateY(1px) !important; box-shadow: none !important;
 }
-#amount-calculator > button {
-  background: #1d4ed8 !important;
-  color: #ffffff !important;
-  border: 2px solid #1e40af !important;
-  border-radius: 10px !important;
-  min-height: 50px !important;
-  font-size: 18px !important;
-  font-weight: 800 !important;
-  text-shadow: none !important;
-  opacity: 1 !important;
+#amount-calculator > button, #edit-amount-calculator > button {
+  background: #1d4ed8 !important; color: #ffffff !important; border: 2px solid #1e40af !important;
+  border-radius: 10px !important; min-height: 50px !important; font-size: 18px !important;
+  font-weight: 800 !important; text-shadow: none !important; opacity: 1 !important;
 }
 @media (max-width: 480px) {
-  #amount-calculator .calculator-grid { gap: 8px !important; }
-  #amount-calculator .calculator-grid button { min-height: 52px !important; font-size: 23px !important; }
-  #amount-calculator #calculator-display { font-size: 30px !important; }
+  #amount-calculator .calculator-grid, #edit-amount-calculator .calculator-grid { gap: 8px !important; }
+  #amount-calculator .calculator-grid button, #edit-amount-calculator .calculator-grid button { min-height: 52px !important; font-size: 23px !important; }
+  #amount-calculator #calculator-display, #edit-amount-calculator #edit-calculator-display { font-size: 30px !important; }
 }
 </style>
 
 </head>
 <body>
-    <div class="header" role="button" tabindex="0" title="點擊回到頂部" aria-label="點擊回到頂部" onclick="scrollToTop()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToTop();}">電子票證管家</div>
+    <div class="header" role="button" tabindex="0" title="點擊回到頂部" aria-label="電子票證管家，點擊回到頂部" onclick="scrollToTop()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToTop();}">
+        <div class="header-title">電子票證管家</div>
+        <div id="app-mode-indicator" class="app-mode-indicator" aria-live="polite" aria-hidden="true"></div>
+    </div>
 
     <!-- Tab: 我的卡片 -->
     <div id="tab-cards" class="tab-content active-tab">
@@ -560,11 +585,24 @@
     <!-- 接收個人雲帳本的支出：先選卡，再確認扣款 -->
     <div class="modal-overlay" id="ledger-deduction-card-modal" style="z-index:90;">
         <div class="modal">
-            <h3 style="color:var(--primary-color);">帳本｜選擇扣款卡片</h3>
+            <h3 style="color:var(--primary-color);">個人雲帳本｜選擇扣款卡片</h3>
             <p id="ledger-deduction-summary" style="font-size:15px; line-height:1.6; color:var(--text-muted); margin:0 0 15px;"></p>
             <div id="ledger-deduction-card-list" style="display:flex; flex-direction:column; gap:10px;"></div>
             <div class="modal-buttons" style="margin-top:18px;">
                 <button class="btn-cancel-modal btn-3d" style="width:100%; flex:1 1 100%;" onclick="cancelExternalLedgerDeduction()">取消扣款</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 交易明細檢視視窗：先查看，進入後才可編輯或刪除 -->
+    <div class="modal-overlay" id="transaction-detail-modal">
+        <div class="modal">
+            <h3>交易明細</h3>
+            <div id="transaction-detail-content" style="line-height:1.9; color:var(--text-main);"></div>
+            <div class="modal-buttons">
+                <button class="btn-cancel-modal btn-3d" onclick="closeModal('transaction-detail-modal')">取消</button>
+                <button class="btn-delete-hist btn-3d" style="margin:0; flex:1;" onclick="deleteTransactionFromDetail()">刪除</button>
+                <button class="btn-block btn-primary btn-3d" style="margin:0; flex:1;" onclick="editTransactionFromDetail()">修改</button>
             </div>
         </div>
     </div>
@@ -574,7 +612,23 @@
         <div class="modal">
             <h3>編輯記錄</h3><input type="hidden" id="edit-tx-id">
             <div class="form-group"><label>日期時間</label><input type="datetime-local" id="edit-datetime" class="form-control"></div>
-            <div class="form-group"><label>金額</label><input type="number" id="edit-amount" class="form-control"></div>
+            <div class="form-group"><label>金額</label><input type="text" id="edit-amount" class="form-control" placeholder="點擊此欄位開啟計算機" autocomplete="off" inputmode="none" readonly onclick="showEditAmountCalculator()" aria-haspopup="true" aria-controls="edit-amount-calculator">
+                <div id="edit-amount-calculator" style="display:none; margin-top:10px; padding:12px; background:var(--bg-color); border:1px solid var(--border-color); border-radius:12px;">
+                    <div id="edit-calculator-expression" style="min-height:20px; color:var(--text-muted); text-align:right; font-size:13px; overflow-wrap:anywhere;"></div>
+                    <div id="edit-calculator-display" aria-live="polite" style="min-height:38px; padding:4px 2px 10px; text-align:right; font-size:26px; font-weight:bold; color:var(--text-main); overflow-wrap:anywhere;">0</div>
+                    <div class="calculator-grid" style="display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px;">
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorClear()" style="background:#fee2e2;color:#b91c1c;">AC</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorBackspace()">⌫</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorInput('÷')">÷</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorInput('×')">×</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorInput('7')">7</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('8')">8</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('9')">9</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('−')">−</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorInput('4')">4</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('5')">5</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('6')">6</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('+')">+</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorInput('1')">1</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('2')">2</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('3')">3</button><button type="button" class="btn-sm btn-3d" onclick="calculatorEvaluate()" style="grid-row:span 2;background:var(--primary-color);color:white;">=</button>
+                        <button type="button" class="btn-sm btn-3d" onclick="calculatorInput('0')">0</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('00')">00</button><button type="button" class="btn-sm btn-3d" onclick="calculatorInput('.')">.</button>
+                    </div>
+                    <button type="button" class="btn-block btn-primary btn-3d" style="margin-top:10px;margin-bottom:0;" onclick="applyCalculatorResult()">套用金額</button>
+                </div>
+            </div>
             <div class="form-group"><label>消費明細</label><input type="text" id="edit-memo" class="form-control"></div>
             <div class="modal-buttons">
                 <button class="btn-cancel-modal btn-3d" onclick="closeModal('edit-modal')">取消</button>
@@ -621,8 +675,6 @@
         let appData = { cards: [], transactions: [], customOrder: [], isOverviewCollapsed: false, starBaseSortPreference: 'default', multiSort: {l1: 'type-default', l2: 'balance-desc', l3: 'none', l4: 'none'} };
         let deferredPrompt, currentAction = { cardId: null, type: null };
         let externalLedgerRequest = null;
-        let externalLedgerSourceName = '個人雲帳本';
-        let externalLedgerReturnUrl = 'https://tcuteblue.github.io/THHPAB/';
         let externalDeductionProcessing = false;
         let allowAppExit = false;
         // 記錄開始操作時卡片在畫面中的垂直位置，排序改變後仍停留在同一張卡片。
@@ -738,8 +790,18 @@
             const advanced = isAdvancedMode();
             const cloud = document.getElementById('advanced-cloud-controls');
             const panel = document.getElementById('advanced-mode-panel');
+            const modeIndicator = document.getElementById('app-mode-indicator');
             if (cloud) cloud.style.display = advanced ? 'block' : 'none';
             if (panel) panel.style.display = advanced ? 'block' : 'none';
+
+            // 右上角模式文字與原本置中的標題同列，所有分頁共用同一個狀態。
+            if (modeIndicator) {
+                modeIndicator.textContent = advanced ? '進階模式' : '';
+                modeIndicator.setAttribute('aria-hidden', advanced ? 'false' : 'true');
+                modeIndicator.classList.toggle('is-advanced', advanced);
+                modeIndicator.classList.remove('is-general');
+            }
+
             if (!advanced && cloudBackupTimer) {
                 clearTimeout(cloudBackupTimer);
                 cloudBackupTimer = null;
@@ -1192,6 +1254,7 @@
                 const context = document.getElementById('external-deduction-context');
                 if (context) context.style.display = 'none';
             }
+            if (id === 'edit-modal') closeEditAmountCalculator();
             if (returnToCardPicker) {
                 renderExternalLedgerCardChoices();
                 document.getElementById('ledger-deduction-card-modal').style.display = 'flex';
@@ -1383,6 +1446,8 @@
         // 金額計算機：輸入欄位下方展開，支援四則運算、歸零與倒退鍵。
         let calculatorExpression = '';
         let calculatorJustEvaluated = false;
+        let calculatorTargetInputId = 'modal-amount';
+        let calculatorUiPrefix = '';
         // 計算機展開時只保留金額與計算機；套用金額收起後再顯示消費明細與操作按鈕。
         function setActionModalCalculatorMode(isOpen) {
             const box = document.getElementById('amount-calculator');
@@ -1395,18 +1460,51 @@
         function showAmountCalculator() {
             // 外部帳本交接的金額固定沿用帳本已儲存金額，避免票證扣款與帳本金額不一致。
             if (externalLedgerRequest) return;
+            calculatorTargetInputId = 'modal-amount';
+            calculatorUiPrefix = '';
             setActionModalCalculatorMode(true);
             if (!calculatorExpression) syncCalculatorFromAmount();
         }
+        function showEditAmountCalculator() {
+            calculatorTargetInputId = 'edit-amount';
+            calculatorUiPrefix = 'edit-';
+            calculatorExpression = '';
+            calculatorJustEvaluated = false;
+
+            const editOverlay = document.getElementById('edit-modal');
+            const editModal = editOverlay ? editOverlay.querySelector('.modal') : null;
+            const box = document.getElementById('edit-amount-calculator');
+            if (editOverlay) editOverlay.classList.add('edit-calculator-open');
+            if (box) box.style.display = 'block';
+            syncCalculatorFromAmount();
+
+            // 讓金額欄留在視窗上方可見位置，計算機在其下方展開。
+            requestAnimationFrame(() => {
+                const amountInput = document.getElementById('edit-amount');
+                if (editModal && amountInput) {
+                    editModal.scrollTop = Math.max(0, amountInput.offsetTop - 18);
+                }
+            });
+        }
+
+        function closeEditAmountCalculator() {
+            const editOverlay = document.getElementById('edit-modal');
+            const editModal = editOverlay ? editOverlay.querySelector('.modal') : null;
+            const box = document.getElementById('edit-amount-calculator');
+            if (box) box.style.display = 'none';
+            if (editOverlay) editOverlay.classList.remove('edit-calculator-open');
+            // 關閉計算機後回到原本置中的編輯視窗位置與捲動起點。
+            if (editModal) editModal.scrollTop = 0;
+        }
         function syncCalculatorFromAmount() {
-            const input = document.getElementById('modal-amount');
+            const input = document.getElementById(calculatorTargetInputId);
             if (!input || calculatorJustEvaluated) return;
             calculatorExpression = String(input.value || '').replace(/\*/g, '×').replace(/\//g, '÷').replace(/-/g, '−');
             updateCalculatorDisplay();
         }
         function updateCalculatorDisplay() {
-            const exp = document.getElementById('calculator-expression');
-            const disp = document.getElementById('calculator-display');
+            const exp = document.getElementById(calculatorUiPrefix + 'calculator-expression');
+            const disp = document.getElementById(calculatorUiPrefix + 'calculator-display');
             if (exp) exp.textContent = calculatorExpression;
             if (disp) {
                 let value = calculatorExpression || '0';
@@ -1450,13 +1548,14 @@
                 // 未輸入任何數字或算式時，直接把預設值 0 套用，不要求使用者先輸入算式。
                 const result = calculatorExpression.trim() === '' ? 0 : evaluateArithmeticExpression(calculatorExpression);
                 if (result < 0) return showDialog('金額不可小於 0');
-                const input = document.getElementById('modal-amount');
+                const input = document.getElementById(calculatorTargetInputId);
                 if (input) input.value = String(result);
                 calculatorExpression = String(result);
                 calculatorJustEvaluated = true;
                 updateCalculatorDisplay();
-                // 套用金額後收起計算機；空白時也可直接套用 0。
-                setActionModalCalculatorMode(false);
+                // 套用金額後收起目前使用的計算機。
+                if (calculatorTargetInputId === 'modal-amount') setActionModalCalculatorMode(false);
+                else if (calculatorTargetInputId === 'edit-amount') closeEditAmountCalculator();
                 if (input) input.blur();
             } catch (e) {
                 showDialog('無法使用此金額：' + e.message, '計算機');
@@ -1575,9 +1674,6 @@
                 // 從雲端讀取交接資料，不依賴兩個獨立 PWA 共用 localStorage。
                 request = await fetchLedgerHandoff(requestId);
                 cacheLedgerRequest(request);
-                const isHouseholdLedger = String(request && request.sourceRecordId || '').startsWith('household:');
-                externalLedgerSourceName = isHouseholdLedger ? '家用雲帳本' : '個人雲帳本';
-                externalLedgerReturnUrl = (document.referrer && /^https?:\/\//i.test(document.referrer)) ? document.referrer : 'https://tcuteblue.github.io/THHPAB/';
                 showTransitHandoffProgress('扣款資料已收到', '正在確認交接狀態及可用的電子票證。', 2);
             } catch (e) {
                 cleanLedgerHandoffQuery();
@@ -1718,7 +1814,7 @@
             document.getElementById('ledger-deduction-card-modal').style.display = 'none';
             document.getElementById('modal-title').innerText = `確認扣款：${card.name}`;
             const context = document.getElementById('external-deduction-context');
-            context.textContent = `來源：${externalLedgerSourceName}
+            context.textContent = `來源：個人雲帳本
 帳目日期：${externalLedgerRequest.date}｜卡片：${card.name}`;
             context.style.display = 'block';
             const amount = Number(externalLedgerRequest.amount);
@@ -1745,7 +1841,7 @@
                 externalDeductionProcessing = false;
                 document.getElementById('ledger-deduction-card-modal').style.display = 'none';
                 cleanLedgerHandoffQuery();
-                showExternalLedgerResultDialog('已取消電子票證扣款。帳本已儲存的帳目仍會保留。', '扣款已取消');
+                showExternalLedgerResultDialog('已取消電子票證扣款。個人雲帳本已儲存的帳目仍會保留。', '扣款已取消');
             } catch (e) {
                 showDialog('取消狀態尚未寫入雲端：' + e.message + '\n目前沒有執行扣款，請確認網路後再按一次取消。', '取消未完成');
             }
@@ -1769,7 +1865,7 @@
         }
 
         function returnToPersonalLedger() {
-            window.location.assign(externalLedgerReturnUrl);
+            window.location.assign('https://tcuteblue.github.io/THHPAB/');
         }
 
         async function completeExternalLedgerRequest(transaction, card, claimToken) {
@@ -1880,7 +1976,7 @@
                         timestamp,
                         externalRequestId: request.requestId,
                         sourceRecordId: request.sourceRecordId,
-                        sourceApp: externalLedgerSourceName
+                        sourceApp: '個人雲帳本'
                     });
                     if (!tx) throw new Error('扣款交易未能保存');
                     showTransitHandoffProgress('扣款紀錄已寫入', '正在備份電子票證資料，請勿關閉程式或重複操作。', 3);
@@ -1902,7 +1998,7 @@
                     hideTransitHandoffProgress();
                     closeModal('action-modal');
                     const autoTopupNotice = autoTopupEstimate > 0 ? `\n扣款後餘額為負數，已依原規則自動儲值 NT$ ${autoTopupEstimate.toLocaleString()}。` : '';
-                    showExternalLedgerResultDialog(`已從「${card.name}」扣款 NT$ ${amt.toLocaleString()}。\n交易日期沿用${externalLedgerSourceName}：${request.date}${autoTopupNotice}`, '電子票證扣款完成');
+                    showExternalLedgerResultDialog(`已從「${card.name}」扣款 NT$ ${amt.toLocaleString()}。\n交易日期沿用個人雲帳本：${request.date}${autoTopupNotice}`, '電子票證扣款完成');
                 } catch (e) {
                     hideTransitHandoffProgress();
                     externalDeductionProcessing = false;
@@ -1964,11 +2060,40 @@
             return mainTransaction;
         }
 
+        let currentDetailTransactionId = '';
+        function openTransactionDetail(id) {
+            const t = appData.transactions.find(x => x.id === id);
+            if (!t) return;
+            currentDetailTransactionId = id;
+            const c = appData.cards.find(x => x.id === t.cardId);
+            const amountText = t.type === '登錄' ? '系統紀錄' :
+                (t.type === '扣款' ? '- NT$ ' : (t.type === '儲值' ? '+ NT$ ' : (t.type === '校正' && Number(t.amount) >= 0 ? '+ NT$ ' : '- NT$ '))) +
+                (t.type === '登錄' ? '' : Math.abs(Number(t.amount || 0)).toLocaleString());
+            const rows = [['卡片', c ? c.name : '已刪除的卡片'], ['日期時間', formatDate(t.timestamp)], ['交易類型', t.type || ''], ['金額', amountText], ['消費明細', t.memo || '（未填寫）']];
+            const esc = value => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+            document.getElementById('transaction-detail-content').innerHTML = rows.map(([label, value]) =>
+                `<div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border-color);"><strong style="min-width:82px;">${esc(label)}</strong><span style="flex:1;overflow-wrap:anywhere;">${esc(value)}</span></div>`
+            ).join('');
+            document.getElementById('transaction-detail-modal').style.display = 'flex';
+        }
+        function editTransactionFromDetail() {
+            const id = currentDetailTransactionId;
+            closeModal('transaction-detail-modal');
+            if (id) openEditModal(id);
+        }
+        function deleteTransactionFromDetail() {
+            const id = currentDetailTransactionId;
+            closeModal('transaction-detail-modal');
+            if (id) deleteTransaction(id);
+        }
+
         function openEditModal(id) {
             const t = appData.transactions.find(t => t.id === id); if(!t) return;
             document.getElementById('edit-tx-id').value = t.id;
             document.getElementById('edit-datetime').value = formatDate(t.timestamp, true);
             document.getElementById('edit-amount').value = t.amount || 0;
+            closeEditAmountCalculator();
+            calculatorTargetInputId = 'edit-amount'; calculatorUiPrefix = 'edit-'; calculatorExpression = String(t.amount || 0); calculatorJustEvaluated = false;
             document.getElementById('edit-amount').disabled = ['登錄', '校正'].includes(t.type);
             document.getElementById('edit-memo').value = t.memo || '';
             document.getElementById('edit-modal').style.display = 'flex';
@@ -1976,7 +2101,7 @@
 
         function submitEdit() {
             const t = appData.transactions.find(t => t.id === document.getElementById('edit-tx-id').value), c = appData.cards.find(c => c.id === t.cardId);
-            const amt = parseInt(document.getElementById('edit-amount').value) || 0, dt = document.getElementById('edit-datetime').value;
+            const amt = Number(document.getElementById('edit-amount').value) || 0, dt = document.getElementById('edit-datetime').value;
             if (!dt || (!['登錄', '校正'].includes(t.type) && amt < 0)) return showDialog('輸入無效');
             
             if (c) {
@@ -2240,7 +2365,7 @@
                 const c = appData.cards.find(c => c.id === t.cardId);
                 const nameTag = (selId === 'all' && c) ? `<div style="font-size:12px; font-weight:bold; color:var(--text-main); background:var(--bg-color); display:inline-block; padding:4px 8px; border-radius:6px; margin-bottom:6px;">💳 ${c.name}</div><br>` : '';
 
-                return `<div class="history-item ${cls}"><div class="history-left">${nameTag}<div class="history-time">${formatDate(t.timestamp)}</div><div class="history-desc">${t.type}${t.memo ? `<br><span style="font-size:14px; color:var(--text-muted); font-weight:normal; display:inline-block; margin-top:4px;">📝 ${t.memo}</span>` : ''}</div></div><div class="history-right"><span class="history-amount ${amtCls}" ${!isD&&!isT&&!isC ? 'style="font-size:14px;"' : ''}>${amtStr}</span><div><button class="btn-edit-hist btn-3d" onclick="openEditModal('${t.id}')">編輯</button><button class="btn-delete-hist btn-3d" onclick="deleteTransaction('${t.id}')">刪除</button></div></div></div>`;
+                return `<div class="history-item ${cls}" role="button" tabindex="0" aria-label="查看${t.type}明細" onclick="openTransactionDetail('${t.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openTransactionDetail('${t.id}');}" style="cursor:pointer;"><div class="history-left">${nameTag}<div class="history-time">${formatDate(t.timestamp)}</div><div class="history-desc">${t.type}${t.memo ? `<br><span style="font-size:14px; color:var(--text-muted); font-weight:normal; display:inline-block; margin-top:4px;">📝 ${t.memo}</span>` : ''}</div></div><div class="history-right"><span class="history-amount ${amtCls}" ${!isD&&!isT&&!isC ? 'style="font-size:14px;"' : ''}>${amtStr}</span><span style="font-size:12px;color:var(--text-muted);margin-top:8px;">點擊查看明細 ›</span></div></div>`;
             }).join('');
         }
 
