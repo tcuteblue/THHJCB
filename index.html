@@ -907,7 +907,13 @@
                 applyModeUI();
                 showDialog('雲端密碼驗證成功，已進入進階模式。本裝置下次開啟仍會維持進階模式。', '進階模式啟用');
                 // 成功進階驗證後才進行啟動時雲端資料比對。
-                syncTransitDataFromCloudOnStartup().then(() => { renderCards(); renderHistory(); });
+                // 若本次是由一般模式收到的個人雲帳本交接連結，待雲端資料比對完成後再接續處理。
+                const hasPendingLedgerHandoff = new URL(window.location.href).searchParams.get('ledgerDeduction') === '1';
+                syncTransitDataFromCloudOnStartup().then(() => {
+                    renderCards();
+                    renderHistory();
+                    if (hasPendingLedgerHandoff) setTimeout(handleExternalLedgerRequestFromUrl, 350);
+                });
             } catch (e) {
                 showDialog('無法進入進階模式：' + e.message + '\n請確認網路及共用 GAS 部署狀態。', '雲端驗證失敗');
             }
@@ -1764,6 +1770,14 @@
                 return;
             }
 
+            // 一般模式不開放雲端備份，因此不讀取／領取交接請求，也不進入選卡及扣款流程。
+            // 保留網址中的 requestId，使用者成功啟用進階模式後即可接續原本這筆交接。
+            if (!isAdvancedMode()) {
+                hideTransitHandoffProgress();
+                showDialog('目前電子票證為一般模式，無法雲端備份，記得開啟進階模式。', '請先開啟進階模式');
+                return;
+            }
+
             showTransitHandoffProgress('正在接收帳本扣款資料', '正在從雲端讀取金額、消費明細及帳目日期。', 1);
             try {
             let request;
@@ -2027,6 +2041,11 @@
 
         async function submitAction() {
             const isExternalLedger = !!externalLedgerRequest;
+            // 第二道防護：若交接畫面開啟後模式被切回一般模式，仍須在取得雲端處理權及寫入扣款前停止。
+            if (isExternalLedger && !isAdvancedMode()) {
+                showDialog('目前電子票證為一般模式，無法雲端備份，記得開啟進階模式。', '請先開啟進階模式');
+                return;
+            }
             const amt = Number(document.getElementById('modal-amount').value);
             if (!Number.isFinite(amt) || amt <= 0) return showDialog('請輸入有效金額');
             if (isExternalLedger && amt !== Number(externalLedgerRequest.amount)) {
