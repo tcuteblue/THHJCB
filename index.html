@@ -681,10 +681,9 @@
         <div class="modal">
             <h3>編輯記錄</h3><input type="hidden" id="edit-tx-id">
             <div class="form-group"><label>日期時間</label><input type="datetime-local" id="edit-datetime" class="form-control"></div>
-            <div class="form-group"><label>交易類型</label><select id="edit-type" class="form-control" onchange="onEditTransactionTypeChange()"><option value="扣款">扣款</option><option value="儲值">儲值</option><option value="校正">校正</option><option value="登錄">登錄</option></select></div>
-            <div class="form-group"><label>所屬卡片</label><select id="edit-card" class="form-control"></select></div>
-            <div class="form-group"><label id="edit-amount-label">金額</label><input type="text" id="edit-amount" class="form-control" placeholder="點擊此欄位開啟計算機" autocomplete="off" inputmode="none" readonly onclick="showEditAmountCalculator()" aria-haspopup="true" aria-controls="edit-amount-calculator"></div>
-            <p id="edit-linked-transaction-note" style="display:none;margin:-4px 0 12px;color:var(--text-muted);font-size:13px;line-height:1.5;">這筆紀錄來自家用雲帳本扣款交接。為避免帳本與票證資料不一致，交易類型、所屬卡片及金額不能修改。</p>
+            <div class="form-group"><label>金額</label><input type="text" id="edit-amount" class="form-control" placeholder="點擊此欄位開啟計算機" autocomplete="off" inputmode="none" readonly onclick="showEditAmountCalculator()" aria-haspopup="true" aria-controls="edit-amount-calculator">
+
+            </div>
             <div class="form-group"><label>消費明細</label><input type="text" id="edit-memo" class="form-control"></div>
             <div class="modal-buttons">
                 <button class="btn-cancel-modal btn-3d" onclick="closeModal('edit-modal')">取消</button>
@@ -747,6 +746,7 @@
         let deferredPrompt, currentAction = { cardId: null, type: null };
         let externalLedgerRequest = null;
         let externalDeductionProcessing = false;
+        let externalLedgerRequestLoadRunning = false;
         let allowAppExit = false;
         // 記錄開始操作時卡片在畫面中的垂直位置，排序改變後仍停留在同一張卡片。
         let cardViewportAnchor = null;
@@ -908,7 +908,13 @@
                 applyModeUI();
                 showDialog('雲端密碼驗證成功，已進入進階模式。本裝置下次開啟仍會維持進階模式。', '進階模式啟用');
                 // 成功進階驗證後才進行啟動時雲端資料比對。
-                syncTransitDataFromCloudOnStartup().then(() => { renderCards(); renderHistory(); });
+                // 若本次是由一般模式收到的個人雲帳本交接連結，待雲端資料比對完成後再接續處理。
+                const hasPendingLedgerHandoff = new URL(window.location.href).searchParams.get('ledgerDeduction') === '1';
+                syncTransitDataFromCloudOnStartup().then(() => {
+                    renderCards();
+                    renderHistory();
+                    if (hasPendingLedgerHandoff) setTimeout(handleExternalLedgerRequestFromUrl, 350);
+                });
             } catch (e) {
                 showDialog('無法進入進階模式：' + e.message + '\n請確認網路及共用 GAS 部署狀態。', '雲端驗證失敗');
             }
@@ -1755,6 +1761,7 @@
         }
 
         async function handleExternalLedgerRequestFromUrl() {
+            if (externalLedgerRequestLoadRunning) return;
             const url = new URL(window.location.href);
             if (url.searchParams.get('ledgerDeduction') !== '1') return;
             const requestId = url.searchParams.get('requestId');
@@ -1765,6 +1772,15 @@
                 return;
             }
 
+            // 一般模式不開放雲端備份，因此不讀取／領取交接請求，也不進入選卡及扣款流程。
+            // 保留網址中的 requestId，使用者成功啟用進階模式後即可接續原本這筆交接。
+            if (!isAdvancedMode()) {
+                hideTransitHandoffProgress();
+                showDialog('目前電子票證為一般模式，無法雲端備份，記得開啟進階模式。', '請先開啟進階模式');
+                return;
+            }
+
+            externalLedgerRequestLoadRunning = true;
             showTransitHandoffProgress('正在接收帳本扣款資料', '正在從雲端讀取金額、消費明細及帳目日期。', 1);
             try {
             let request;
@@ -1774,8 +1790,8 @@
                 cacheLedgerRequest(request);
                 showTransitHandoffProgress('扣款資料已收到', '正在確認交接狀態及可用的電子票證。', 2);
             } catch (e) {
-                cleanLedgerHandoffQuery();
-                showDialog('無法讀取個人雲帳本的扣款資料：' + e.message + '\n請確認網路連線及個人雲帳本 GAS 已部署新版。', '讀取扣款資料失敗');
+                // 暫時斷線或 GAS 回應遺失時保留網址中的 requestId；重新連線後可安全重讀同一筆請求。
+                showDialog('暫時無法讀取帳本扣款資料：' + e.message + '\n請恢復網路後重新整理此頁；系統會沿用同一個交接識別碼，不會因此重複扣款。', '等待重新連線');
                 return;
             }
             if (!request || request.source !== 'personal-cloud-ledger' || request.requestId !== requestId) {
@@ -1861,9 +1877,27 @@
             renderExternalLedgerCardChoices();
             document.getElementById('ledger-deduction-card-modal').style.display = 'flex';
             } finally {
+                externalLedgerRequestLoadRunning = false;
                 hideTransitHandoffProgress();
             }
         }
+
+        // 初次讀取交接若遇到暫時斷線，恢復網路或 PWA 回到前景時，沿用網址中的 requestId 重試。
+        window.addEventListener('online', () => {
+            if (new URL(window.location.href).searchParams.get('ledgerDeduction') === '1') {
+                setTimeout(handleExternalLedgerRequestFromUrl, 250);
+            }
+        });
+        window.addEventListener('pageshow', () => {
+            if (new URL(window.location.href).searchParams.get('ledgerDeduction') === '1') {
+                setTimeout(handleExternalLedgerRequestFromUrl, 250);
+            }
+        });
+        window.addEventListener('focus', () => {
+            if (new URL(window.location.href).searchParams.get('ledgerDeduction') === '1') {
+                setTimeout(handleExternalLedgerRequestFromUrl, 250);
+            }
+        });
 
         function renderExternalLedgerCardChoices() {
             const list = document.getElementById('ledger-deduction-card-list');
@@ -2028,6 +2062,11 @@
 
         async function submitAction() {
             const isExternalLedger = !!externalLedgerRequest;
+            // 第二道防護：若交接畫面開啟後模式被切回一般模式，仍須在取得雲端處理權及寫入扣款前停止。
+            if (isExternalLedger && !isAdvancedMode()) {
+                showDialog('目前電子票證為一般模式，無法雲端備份，記得開啟進階模式。', '請先開啟進階模式');
+                return;
+            }
             const amt = Number(document.getElementById('modal-amount').value);
             if (!Number.isFinite(amt) || amt <= 0) return showDialog('請輸入有效金額');
             if (isExternalLedger && amt !== Number(externalLedgerRequest.amount)) {
@@ -2185,84 +2224,31 @@
             if (id) deleteTransaction(id);
         }
 
-        function onEditTransactionTypeChange() {
-            const type = document.getElementById('edit-type').value;
-            const amount = document.getElementById('edit-amount');
-            const label = document.getElementById('edit-amount-label');
-            if (type === '登錄') {
-                amount.value = '0'; amount.disabled = true;
-                label.textContent = '金額（登錄不計金額）';
-            } else {
-                amount.disabled = false;
-                label.textContent = type === '校正' ? '餘額校正差額（可正可負）' : '金額';
-            }
-        }
-
         function openEditModal(id) {
             const t = appData.transactions.find(t => t.id === id); if(!t) return;
-            const isLedgerLinked = !!t.externalRequestId;
             document.getElementById('edit-tx-id').value = t.id;
             document.getElementById('edit-datetime').value = formatDate(t.timestamp, true);
-            const typeSelect = document.getElementById('edit-type');
-            typeSelect.value = ['扣款','儲值','校正','登錄'].includes(t.type) ? t.type : '扣款';
-            const cardSelect = document.getElementById('edit-card');
-            cardSelect.innerHTML = appData.cards.map(c => `<option value="${String(c.id).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}">${String(c.name).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}（${String(c.type || '')}）</option>`).join('');
-            cardSelect.value = t.cardId;
             document.getElementById('edit-amount').value = t.amount || 0;
-            document.getElementById('edit-memo').value = t.memo || '';
-            document.getElementById('edit-linked-transaction-note').style.display = isLedgerLinked ? 'block' : 'none';
-            typeSelect.disabled = isLedgerLinked;
-            cardSelect.disabled = isLedgerLinked;
-            document.getElementById('edit-amount').disabled = isLedgerLinked || t.type === '登錄';
-            document.getElementById('edit-datetime').disabled = isLedgerLinked;
-            document.getElementById('edit-memo').readOnly = false;
-            onEditTransactionTypeChange();
-            if (isLedgerLinked) document.getElementById('edit-amount').disabled = true;
             closeEditAmountCalculator();
             calculatorTargetInputId = 'edit-amount'; calculatorUiPrefix = 'edit-'; calculatorExpression = String(t.amount || 0); calculatorJustEvaluated = false;
+            document.getElementById('edit-amount').disabled = ['登錄', '校正'].includes(t.type);
+            document.getElementById('edit-memo').value = t.memo || '';
             document.getElementById('edit-modal').style.display = 'flex';
         }
 
-        function transactionBalanceEffect(type, amount) {
-            const n = Number(amount) || 0;
-            if (type === '扣款') return -Math.abs(n);
-            if (type === '儲值') return Math.abs(n);
-            if (type === '校正') return n;
-            return 0; // 登錄只記錄次數，不改變餘額
-        }
-
         function submitEdit() {
-            const t = appData.transactions.find(t => t.id === document.getElementById('edit-tx-id').value);
-            if (!t) return showDialog('找不到這筆交易紀錄');
-            const oldCard = appData.cards.find(c => String(c.id) === String(t.cardId));
-            const isLedgerLinked = !!t.externalRequestId;
-            const nextType = document.getElementById('edit-type').value;
-            const nextCardId = document.getElementById('edit-card').value;
-            const nextCard = appData.cards.find(c => String(c.id) === String(nextCardId));
-            const dt = document.getElementById('edit-datetime').value;
-            const rawAmount = Number(document.getElementById('edit-amount').value);
-            const amt = nextType === '登錄' ? 0 : rawAmount;
-            if (!dt || !Number.isFinite(amt) || !nextCard) return showDialog('請確認日期、金額及所屬卡片');
-            if (isLedgerLinked && (nextType !== t.type || String(nextCardId) !== String(t.cardId) || amt !== Number(t.amount))) {
-                return showDialog('這筆紀錄來自家用雲帳本扣款交接，不能修改交易類型、所屬卡片或金額，以免帳本與票證紀錄不一致。');
+            const t = appData.transactions.find(t => t.id === document.getElementById('edit-tx-id').value), c = appData.cards.find(c => c.id === t.cardId);
+            const amt = Number(document.getElementById('edit-amount').value) || 0, dt = document.getElementById('edit-datetime').value;
+            if (!dt || (!['登錄', '校正'].includes(t.type) && amt < 0)) return showDialog('輸入無效');
+            
+            if (c) {
+                if (t.type === '扣款') c.balance += t.amount; else if (['儲值', '校正'].includes(t.type)) c.balance -= t.amount;
+                if (t.type === '扣款') {
+                    if (c.balance < amt) { const topup = Math.ceil((amt - c.balance)/500)*500; c.balance += topup; addTx(c.id, '儲值', topup, '自動儲值', '_topup_edit'); }
+                    c.balance -= amt;
+                } else if (t.type === '儲值') c.balance += amt;
             }
-            if (['扣款','儲值'].includes(nextType) && amt <= 0) return showDialog('扣款及儲值金額必須大於 0');
-            if (nextType === '校正' && !Number.isFinite(amt)) return showDialog('請輸入有效的校正差額');
-
-            // 先從原卡片回沖舊交易，再把新交易效果套用到選定卡片。
-            if (oldCard) oldCard.balance -= transactionBalanceEffect(t.type, t.amount);
-            if (nextType === '扣款' && nextCard.balance < amt) {
-                const topup = Math.ceil((amt - nextCard.balance) / 500) * 500;
-                nextCard.balance += topup;
-                addTx(nextCard.id, '儲值', topup, '自動儲值（編輯交易時補足餘額）', '_topup_edit_' + Date.now());
-            }
-            nextCard.balance += transactionBalanceEffect(nextType, amt);
-
-            t.cardId = nextCard.id;
-            t.type = nextType;
-            t.amount = amt;
-            t.timestamp = new Date(dt).toISOString();
-            t.memo = document.getElementById('edit-memo').value.trim();
+            t.amount = amt; t.timestamp = new Date(dt).toISOString(); t.memo = document.getElementById('edit-memo').value.trim();
             saveData(); renderCards(); triggerAutoBackup(); closeModal('edit-modal');
         }
 
@@ -2570,7 +2556,8 @@
             try { let base = window.location.href; if (base.startsWith('blob:') || base.startsWith('data:')) { base = window.location.origin + '/'; } iconUrl = new URL("icon.png", base).href; } catch (e) { iconUrl = "icon.png"; }
             const m = { name: "電子票證管家", short_name: "電子票證管家", display: "standalone", background_color: "#f0f4f8", theme_color: "#f0f4f8", icons: [{ src: iconUrl, sizes: "192x192 512x512", type: "image/png", purpose: "any maskable" }, { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230ea5e9'/%3E%3Ctext x='50' y='65' font-size='50' font-weight='bold' font-family='sans-serif' text-anchor='middle' fill='%23ffffff'%3E卡%3C/text%3E%3C/svg%3E", sizes: "512x512", type: "image/svg+xml" }], start_url: window.location.href };
             const l = document.createElement('link'); l.rel = 'manifest'; l.href = URL.createObjectURL(new Blob([JSON.stringify(m)], {type: 'application/json'})); document.head.appendChild(l);
-            if ('serviceWorker' in navigator) navigator.serviceWorker.register(URL.createObjectURL(new Blob([`self.addEventListener('fetch', e => e.respondWith(fetch(e.request).then(r => caches.open('transit-pwa').then(c => { c.put(e.request, r.clone()); return r; })).catch(() => caches.match(e.request))));`], {type: 'application/javascript'}))).catch(console.log);
+            // 單檔 PWA：Manifest 以 Blob 動態產生，不依賴額外背景程式。
+            // 交接斷線時保留 requestId，恢復網路後由本頁面重新讀取。
         }
 
         window.onload = init;
